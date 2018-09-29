@@ -1,0 +1,106 @@
+#!//usr/bin/node
+'use strict';
+const fs = require('fs');
+const readline = require('readline');
+
+function curlh() {
+	const optionsSet   = new Set();
+	const infos     = [];
+	const codes     = [];
+	const optionRe  = /^\s*CINIT\((\w+), (LONG|OFF_T|DOUBLE|STRING|OBJECT)/;
+	const infoRe    = /^\s*CURLINFO_(\w+)\s*=[^C]*CURLINFO_(LONG|DOUBLE|OFF_T|STRING|SLIST)/;
+	const curlCodeRe = /^\s*CURLE_(\w+),/;
+
+	return new Promise(resolve =>
+		readline.createInterface({
+			input: fs.createReadStream('/usr/include/curl/curl.h'),
+			crlfDelay: Infinity
+		}).on('line', line => {
+
+			const opt = optionRe.exec(line);
+			if ( opt ) {
+				optionsSet.add(opt[1]);
+				return;
+			}
+
+			const i = infoRe.exec(line);
+			if ( i ) {
+				infos.push(`{ "${i[1]}", CURLINFO_${i[1]} }`);
+				return;
+			}
+
+			const code = curlCodeRe.exec(line);
+			if ( code ) {
+				codes.push(`{ CURLE_${code[1]}, "${code[1]}" }`);
+				return;
+			}
+		}).on('close', () => resolve({optionsSet, infos, codes}))
+	);
+}
+
+function setoptc() { return new Promise( resolve => {
+	const options  = [];
+	const optionRe = /^\s*case CURLOPT_(\w+):|\s*default:/;
+	const vaaargRe = /va_arg\(param,\s*([^),]+)/;
+
+	const napiValuetypes = {
+		'long'               : 'napi_number',
+		'unsigned long'      : 'napi_number',
+		'curl_off_t'         : 'napi_number',
+		'char *'             : 'napi_string',
+		'struct curl_slist *': 'napi_object',
+	};
+
+	let currentOptions = [];
+
+	readline.createInterface({
+
+		input: fs.createReadStream('/tmp/setopt.c'),
+		crlfDelay: Infinity
+
+	}).on('line', line => {
+		const opt = optionRe.exec(line);
+		if ( opt )
+			return currentOptions.push(opt[1]);
+
+		if ( ! currentOptions.length )
+			return;
+
+		const va = vaaargRe.exec(line);
+		if ( !va )
+			return;
+
+		const napiType = napiValuetypes[va[1].trim()];
+		if ( napiType )
+			for (const opt of currentOptions)
+				options.push({opt,  cpp: `{ "${opt}", { CURLOPT_${opt}, ${napiType} } }`});
+
+		currentOptions = [];
+
+	}).on('close', () => resolve({ options }));
+}); }
+
+Promise.all([curlh(), setoptc()]).then( ([ { optionsSet, infos, codes }, { options }]) => {
+	fs.writeFileSync('src/napi-libcurl-maps.hpp', `\
+#include <node/node_api.h>
+#include <curl/curl.h>
+#include <map>
+
+using CURLoptionNapiType = struct {
+	CURLoption opt;
+	napi_valuetype type;
+};
+
+std::map<std::string, CURLoptionNapiType> mapCURLoption {
+	${options.filter(v => optionsSet.has(v.opt)).map(v => v.cpp).join(',\n\t')}
+};
+
+std::map<std::string, CURLINFO> mapCURLinfo {
+	${infos.join(',\n\t')}
+};
+
+std::map<CURLcode, std::string> mapCURLcode {
+	${codes.join(',\n\t')}
+};
+`	);
+});

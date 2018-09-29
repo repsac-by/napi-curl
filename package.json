@@ -1,0 +1,12 @@
+{
+  "name": "napi-curl",
+  "version": "0.1.0",
+  "description": "napi bindings for libcurl",
+  "main": "index.js",
+  "author": "surefire",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "node-addon-api": "nodejs/node-addon-api"
+  }
+}
