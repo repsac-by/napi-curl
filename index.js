@@ -93,7 +93,7 @@ module.exports.Curl = class extends Curl {
 			if ('post' in opts)
 				throw new TypeError(`'post' must be a string`);
 
-			switch (opts.responseType || 'promise') {
+			switch (opts.dataAs || 'promise') {
 
 			case 'promise': {
 				const decoder = new TextDecoder('utf8');
@@ -171,10 +171,12 @@ module.exports.Curl = class extends Curl {
 				break;
 			}
 			default:
-				throw new TypeError(`responseType: expect 'promise' or 'stream'`);
+				throw new TypeError(`dataAs: expect 'promise' or 'stream'`);
 			}
 
 			super.perform(req);
 		});
 	}
-};
+}
+
+module.exports.Curl = Curl;
