@@ -13,18 +13,30 @@ const DBG_LOG = DEBUG
 	? (fmt, ...args) => console.error("DEBUG JS: " + fmt, ...args)
 	: () => {};
 
-const { Curl } = requireAddon('addon');
+const { Curl: NapiCurl } = requireAddon('addon');
 const { TextDecoder } = require('util');
 const { parseHeaderLine } = require('./helpers');
 const { Readable } = require('stream');
 
-module.exports.Curl = class extends Curl {
+/** Class representing Curl handle **/
+class Curl extends NapiCurl {
+
+	/**
+	 * Create instance of Curl handle with default easy options
+	 * @param {Object.<string, number|boolean|string|string[]>} [defaults] - Default Curl easy options https://curl.haxx.se/libcurl/c/easy_setopt_options.html
+	 */
 	constructor(defaults) {
 		super();
 		this.defaults = Object.assign({}, defaults);
 		this.setOpt(this.defaults);
 	}
 
+	/**
+	 * Extract information from a curl handle
+	 * https://curl.haxx.se/libcurl/c/easy_getinfo_options.html
+	 * @param  {string} key - Option key without prefix CURLINFO_
+	 * @return {number|string|string[]}
+	 */
 	getInfo(key) {
 		if ( typeof key !== 'string')
 			throw new TypeError("Curl#getInfo expect string");
@@ -33,14 +45,21 @@ module.exports.Curl = class extends Curl {
 		return super.getInfo(key);
 	}
 
-	setOpt(key = {}, val = null) {
+	/**
+	 * Curl easy options
+	 * https://curl.haxx.se/libcurl/c/easy_setopt_options.html
+	 * @param {string|Object.<string, number|boolean|string|string[]>} key - Option key without prefix CURLOPT_ or object of key-value
+	 * @param {number|boolean|string|string[]} [val] - Optional value use when key is string
+	 * @return {Curl} This
+	 */
+	setOpt(key, val) {
 		if ( typeof key === 'string' ) {
 			key = key.replace(/^CURLOPT_/, '');
 			super.setOpt(key, val);
 			return this;
 		}
 
-		if ( typeof key === 'object' ) {
+		if ( typeof key === 'object' && key) {
 			Object.entries(key).forEach( ([key, val]) => super.setOpt(key.replace(/^CURLOPT_/, ''), val) );
 			return this;
 		}
@@ -48,11 +67,23 @@ module.exports.Curl = class extends Curl {
 		throw new TypeError("Curl#setOpt key expected string or object");
 	}
 
+	/**
+	 * Reset option to default
+	 * @return {Curl} This
+	 */
 	reset() {
 		super.reset();
 		return this.setOpt(this.defaults);
 	}
 
+	/**
+	 * Perform request
+	 * @param  {Object} [opts={}]
+	 * @param  {string}   opts.dataAs - Data can be returned in two ways as a 'promise' or as a 'stream'
+	 * @param  {string}   opts.post   - Data to send in an HTTP POST operation
+	 * @param  {Readable} opts.put    - Uploading means using the PUT request
+	 * @return {Promise}  Response that is called as soon as the header is received
+	 */
 	perform(opts = {}) {
 		const self = this;
 		return new Promise( (resolve, reject) => {
