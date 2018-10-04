@@ -2,6 +2,7 @@
 # yarn lockfile v1
 
 
-node-addon-api@nodejs/node-addon-api:
-  version "1.4.0"
-  resolved "https://codeload.github.com/nodejs/node-addon-api/tar.gz/fd3c37b0f289a4c5756eb60f39533d00f88a7253"
+node-addon-api@^1.5.0:
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/node-addon-api/-/node-addon-api-1.5.0.tgz#55be6b3da36e746f4b1f2af16c2adf67647d1ff8"
+  integrity sha512-YsL/8dpBWxCFj3wAVAa/ceN4TlT8lACK8EgpuN0q/4ecflWHDuKpodb+tt7Rx22r/6FJ2f+IT25XSsXnZGwYgA==

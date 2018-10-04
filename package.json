@@ -7,6 +7,6 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "node-addon-api": "nodejs/node-addon-api"
+    "node-addon-api": "^1.5.0"
   }
 }
