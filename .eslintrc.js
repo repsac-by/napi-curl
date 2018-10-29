@@ -1,11 +1,11 @@
 module.exports = {
 	root: true,
 	parserOptions: {
-		ecmaVersion: 2017,
+		ecmaVersion: 2018,
 	},
 	env: {
-		node: true,
 		es6: true,
+		node: true,
 	},
 	extends: 'eslint:recommended',
 	rules: {
@@ -31,5 +31,6 @@ module.exports = {
 		'no-else-return': 1,
 		'yield-star-spacing': [1, 'after'],
 		'no-mixed-spaces-and-tabs': [1, 'smart-tabs'],
+		'valid-jsdoc': [1, { requireParamDescription: false, requireReturnDescription: false }],
 	}
 }
