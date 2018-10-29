@@ -3,7 +3,11 @@
 function requireAddon(name){
 	try {
 		return require('./build/Debug/' + name);
-	} catch (ex) {
+	} catch (e) {
+		if ( e.code !== 'MODULE_NOT_FOUND' )
+			throw e;
+
+		console.error(`Try require '${name}' in debug mode`);
 		return require('./build/Release/' + name);
 	}
 }
