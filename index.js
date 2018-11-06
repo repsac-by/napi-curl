@@ -2,13 +2,13 @@
 
 function requireAddon(name){
 	try {
-		return require('./build/Debug/' + name);
+		return require('./build/Release/' + name);
 	} catch (e) {
 		if ( e.code !== 'MODULE_NOT_FOUND' )
 			throw e;
 
 		console.error(`Try require '${name}' in debug mode`);
-		return require('./build/Release/' + name);
+		return require('./build/Debug/' + name);
 	}
 }
 
@@ -17,7 +17,7 @@ const DBG_LOG = DEBUG
 	? (fmt, ...args) => console.error("DEBUG JS: " + fmt, ...args)
 	: () => {};
 
-const { Curl: NapiCurl } = requireAddon('addon');
+const { Curl: NapiCurl } = requireAddon('curl_client');
 const { TextDecoder } = require('util');
 const { parseHeaderLine } = require('./helpers');
 const { Readable } = require('stream');

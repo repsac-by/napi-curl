@@ -1,7 +1,7 @@
 {
 	"targets": [
 		{
-			"target_name": "addon",
+			"target_name": "curl_client",
 			"sources": [
 				"src/addon.cc",
 				"src/napi-libcurl.cc"
