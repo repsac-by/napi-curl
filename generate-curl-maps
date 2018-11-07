@@ -42,6 +42,7 @@ function setoptc() { return new Promise( resolve => {
 	const options  = [];
 	const optionRe = /^\s*case CURLOPT_(\w+):|\s*default:/;
 	const vaaargRe = /va_arg\(param,\s*([^),]+)/;
+	const vaaargRe2 = /\(([^),]+)\)va_arg\(param,\s*void \*\)/;
 
 	const napiValuetypes = {
 		'long'               : 'napi_number',
@@ -66,7 +67,7 @@ function setoptc() { return new Promise( resolve => {
 		if ( ! currentOptions.length )
 			return;
 
-		const va = vaaargRe.exec(line);
+		const va = vaaargRe2.exec(line) || vaaargRe.exec(line);
 		if ( !va )
 			return;
 
