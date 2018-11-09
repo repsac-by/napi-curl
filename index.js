@@ -76,9 +76,12 @@ class Curl extends NapiCurl {
 	 * @param {...*} pass - Pass options to stOpt
 	 * @return {Curl} This
 	 */
-	reset(...opts) {
+	reset(...options) {
 		super.reset();
-		return this.setOpt(this.defaults).setOpt(...opts);
+		this.setOpt(this.defaults);
+		if (options[0])
+			this.setOpt(...options);
+		return this;
 	}
 
 	/**
