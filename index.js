@@ -136,15 +136,14 @@ class Curl extends NapiCurl {
 
 			case 'promise': {
 				const decoder = new TextDecoder('utf8');
-				let rawHeaders = [];
-				let headers = {};
+				let isHeeader = false;
 
-				const data = new Promise( (resolve, reject_) => {
+				const data = new Promise( (resolveBody, rejectBody) => {
 					let body = '';
 
 					req.onError = err => {
 						reject(err);
-						reject_(err);
+						rejectBody(err);
 					};
 
 					req.onData = buf => {
@@ -152,15 +151,18 @@ class Curl extends NapiCurl {
 					};
 
 					req.onEnd = () => {
+						if (!isHeeader)
+							return req.onError(new Error('Connection closed without response'));
+
 						body += decoder.decode();
-						resolve(body);
+						resolveBody(body);
 					};
 
 				} );
 
-				req.onHeader = lines => {
-					rawHeaders = lines;
-					headers = lines.reduce(parseHeaderLine, {});
+				req.onHeader = rawHeaders => {
+					isHeeader = true;
+					const headers = rawHeaders.reduce(parseHeaderLine, {});
 
 					resolve({
 						rawHeaders,
@@ -176,6 +178,7 @@ class Curl extends NapiCurl {
 			}
 
 			case 'stream': {
+				let isHeeader = false;
 				const stream = new Readable({
 					read() {
 						self.readStart();
@@ -191,6 +194,7 @@ class Curl extends NapiCurl {
 				};
 
 				req.onHeader = rawHeaders => {
+					isHeeader = true;
 					const headers = rawHeaders.reduce(parseHeaderLine, {});
 
 					resolve({
@@ -201,13 +205,15 @@ class Curl extends NapiCurl {
 				};
 
 				req.onData = buf => {
-					if ( stream.push(new Uint8Array(buf.slice(0))) )
+					if (stream.push(new Uint8Array(buf.slice(0))))
 						return;
 
 					self.readStop();
 				};
 
 				req.onEnd = () => {
+					if (!isHeeader)
+						return req.onError(new Error('Connection closed without response'));
 					stream.push(null);
 				};
 				break;
