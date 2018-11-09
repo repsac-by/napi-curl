@@ -169,6 +169,9 @@ class Curl extends NapiCurl {
 					});
 				};
 
+				// Suppress internal error;
+				data.catch(() => {});
+
 				break;
 			}
 
