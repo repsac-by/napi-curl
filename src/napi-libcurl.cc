@@ -159,15 +159,15 @@ void Curl::readStart(const Napi::CallbackInfo& info) {
 }
 
 void Curl::onErrorSetter(const Napi::CallbackInfo& info, const Napi::Value& value) {
-	onError.Reset(value.As<Napi::Function>());
+	onError.Reset(value.As<Napi::Function>(), 1);
 }
 
 void Curl::onDataSetter(const Napi::CallbackInfo& info, const Napi::Value& value) {
-	onData.Reset(value.As<Napi::Function>());
+	onData.Reset(value.As<Napi::Function>(), 1);
 }
 
 void Curl::onReadSetter(const Napi::CallbackInfo& info, const Napi::Value& value) {
-	onRead.Reset(value.As<Napi::Function>());
+	onRead.Reset(value.As<Napi::Function>(), 1);
 }
 
 void Curl::on_end() {
@@ -363,13 +363,13 @@ void Curl::perform(const Napi::CallbackInfo& info) {
 		if ( !options[f].IsFunction() )
 			throw Napi::Error::New(env, "Curl#perform expect '" + f + "' callback function");
 
-	onError.Reset(options["onError"].As<Napi::Function>());
-	onHeader.Reset(options["onHeader"].As<Napi::Function>());
-	onData.Reset(options["onData"].As<Napi::Function>());
-	onEnd.Reset(options["onEnd"].As<Napi::Function>());
+	onData.Reset(options["onData"].As<Napi::Function>(), 1);
+	onEnd.Reset(options["onEnd"].As<Napi::Function>(), 1);
+	onError.Reset(options["onError"].As<Napi::Function>(), 1);
+	onHeader.Reset(options["onHeader"].As<Napi::Function>(), 1);
 
 	if ( options["onRead"].IsFunction() )
-		onRead.Reset(options["onRead"].As<Napi::Function>());
+		onRead.Reset(options["onRead"].As<Napi::Function>(), 1);
 
 	CURLMcode res = curl_multi_add_handle(multi, easy);
 
@@ -405,7 +405,7 @@ Napi::Value Curl::reset(const Napi::CallbackInfo& info) {
 
 	curl_easy_setopt(easy, CURLOPT_SUPPRESS_CONNECT_HEADERS, 1);
 
-	onRead.Reset(Napi::Function::New(info.Env(), Curl::dummy, "dummy"));
+	onRead.Reset(Napi::Function::New(info.Env(), Curl::dummy, "dummy"), 1);
 
 	return info.This();
 }
