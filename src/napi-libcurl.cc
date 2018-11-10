@@ -69,6 +69,7 @@ size_t Curl::on_header(char *ptr, size_t size, size_t nmemb) {
 	if ( rtrim(line).length() > 0 )
 		header.push_back(line);
 	else {
+		DBG_LOG("    MakeCallback");
 		Napi::Env env = Env();
 		Napi::HandleScope scope(env);
 
@@ -541,6 +542,8 @@ int Curl::handle_socket(CURL* easy, curl_socket_t sockfd, int action, void *user
 				curl_multi_assign(multi, sockfd, NULL);
 			}
 			break;
+		default:
+			DBG_LOG("    DEFAULT");
 	}
 
 	return 0;
@@ -553,6 +556,7 @@ void Curl::check_multi_info() {
 	CURLMsg *message;
 
 	while ( (message = curl_multi_info_read(multi, &pending)) ) {
+		DBG_LOG("  Read message");
 		CURLcode code;
 		CURL *easy;
 

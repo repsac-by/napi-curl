@@ -12,10 +12,11 @@ function requireAddon(name){
 	}
 }
 
-const DEBUG = 0;
-const DBG_LOG = DEBUG
-	? (fmt, ...args) => console.error("DEBUG JS: " + fmt, ...args)
-	: () => {};
+const debuglog = require('util').debuglog('napi-curl');
+// const DEBUG = 0;
+// const DBG_LOG = DEBUG
+// 	? (fmt, ...args) => console.error("DEBUG JS: " + fmt, ...args)
+// 	: () => {};
 
 const { Curl: NapiCurl } = requireAddon('curl_client');
 const { TextDecoder } = require('util');
@@ -93,6 +94,7 @@ class Curl extends NapiCurl {
 	 * @return {Promise}  Response that is called as soon as the header is received
 	 */
 	perform(opts = {}) {
+		debuglog('perform');
 		const self = this;
 		return new Promise( (resolve, reject) => {
 
@@ -104,7 +106,7 @@ class Curl extends NapiCurl {
 				const src = opts.put
 					.on('error', reject)
 					.on('readable', () => {
-						DBG_LOG('readable');
+						debuglog('put_readable');
 						this.resume();
 					});
 
@@ -139,28 +141,32 @@ class Curl extends NapiCurl {
 				let isHeeader = false;
 
 				const data = new Promise( (resolveBody, rejectBody) => {
+					debuglog('body promise');
 					let body = '';
 
 					req.onError = err => {
+						debuglog('onError');
 						reject(err);
 						rejectBody(err);
 					};
 
 					req.onData = buf => {
+						debuglog('onData');
 						body += decoder.decode(buf, { stream: true });
 					};
 
 					req.onEnd = () => {
+						debuglog('onEnd');
 						if (!isHeeader)
 							return req.onError(new Error('Connection closed without response'));
 
 						body += decoder.decode();
 						resolveBody(body);
 					};
-
 				} );
 
 				req.onHeader = rawHeaders => {
+					debuglog('onHeader');
 					isHeeader = true;
 					const headers = rawHeaders.reduce(parseHeaderLine, {});
 
@@ -173,7 +179,6 @@ class Curl extends NapiCurl {
 
 				// Suppress internal error;
 				data.catch(() => {});
-
 				break;
 			}
 
@@ -184,7 +189,7 @@ class Curl extends NapiCurl {
 						self.readStart();
 					},
 					destroy() {
-						DBG_LOG("destroy");
+						debuglog('stream destroy');
 					}
 				});
 
