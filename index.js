@@ -86,6 +86,14 @@ class Curl extends NapiCurl {
 	}
 
 	/**
+	 * Request to cancel transfer
+	 * @return {undefined}
+	 */
+	cancel() {
+		super.cancel();
+	}
+
+	/**
 	 * Perform request
 	 * @param  {Object} [opts={}]
 	 * @param  {string}   opts.dataAs - Data can be returned in two ways as a 'promise' or as a 'stream'

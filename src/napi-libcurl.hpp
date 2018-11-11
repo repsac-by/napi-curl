@@ -35,6 +35,7 @@ class Curl: public Napi::ObjectWrap<Curl> {
 		static size_t header_callback(char* ptr, size_t size, size_t nmemb, void* userdata);
 		static size_t read_callback(char *buffer, size_t size, size_t nitems, void *userdata);
 		static size_t data_callback(char* ptr, size_t size, size_t nmemb, void* userdata);
+		static int    progress_callback(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
 
 		CURL* easy;
 		char errorbuffer[CURL_ERROR_SIZE] = { 0 };
@@ -58,6 +59,7 @@ class Curl: public Napi::ObjectWrap<Curl> {
 		Napi::Value getInfo(const Napi::CallbackInfo& info);
 		static void dummy(const Napi::CallbackInfo& info);
 		void perform(const Napi::CallbackInfo& info);
+		void cancel(const Napi::CallbackInfo& info);
 		void pause(const Napi::CallbackInfo& info);
 		void resume(const Napi::CallbackInfo& info);
 		void readStop(const Napi::CallbackInfo& info);
@@ -66,9 +68,9 @@ class Curl: public Napi::ObjectWrap<Curl> {
 		void onReadSetter(const Napi::CallbackInfo& info, const Napi::Value& value);
 		void onDataSetter(const Napi::CallbackInfo& info, const Napi::Value& value);
 
+		int cancelTransfer = 0;
 		void on_end();
 		void on_error(CURLcode code);
-		bool snd = false;
 		size_t on_header(char *ptr, size_t size, size_t nmemb);
 		size_t on_read(char *buffer, size_t size, size_t nitems);
 		size_t on_data(char *ptr, size_t size, size_t nmemb);

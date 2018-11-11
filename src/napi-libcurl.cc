@@ -135,6 +135,12 @@ size_t Curl::on_data(char* ptr, size_t size, size_t nmemb) {
 	return len;
 }
 
+void Curl::cancel(const Napi::CallbackInfo& info) {
+	DBG_LOG("Curl::cancel");
+	cancelTransfer = 1;
+	Curl::check_multi_info();
+}
+
 void Curl::pause(const Napi::CallbackInfo& info) {
 	DBG_LOG("Curl::pause");
 	curl_easy_pause(easy, CURLPAUSE_ALL);
@@ -193,7 +199,8 @@ Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
 		InstanceMethod("setOpt",    &Curl::setOpt),
 		InstanceMethod("getInfo",   &Curl::getInfo),
 		InstanceMethod("perform",   &Curl::perform),
-		InstanceMethod("pause",     &Curl::resume),
+		InstanceMethod("cancel",    &Curl::cancel),
+		InstanceMethod("pause",     &Curl::pause),
 		InstanceMethod("resume",    &Curl::resume),
 		InstanceMethod("readStop",  &Curl::readStop),
 		InstanceMethod("readStart", &Curl::readStart),
@@ -372,6 +379,7 @@ void Curl::perform(const Napi::CallbackInfo& info) {
 	if ( options["onRead"].IsFunction() )
 		onRead.Reset(options["onRead"].As<Napi::Function>(), 1);
 
+	cancelTransfer = 0;
 	CURLMcode res = curl_multi_add_handle(multi, easy);
 
 	if ( CURLM_OK != res )
@@ -397,14 +405,17 @@ Napi::Value Curl::reset(const Napi::CallbackInfo& info) {
 	curl_easy_setopt(easy, CURLOPT_HEADERDATA, this);
 	curl_easy_setopt(easy, CURLOPT_WRITEDATA,  this);
 	curl_easy_setopt(easy, CURLOPT_READDATA,  this);
+	curl_easy_setopt(easy, CURLOPT_XFERINFODATA,  this);
 
 	curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, errorbuffer);
 
 	curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, Curl::header_callback);
 	curl_easy_setopt(easy, CURLOPT_READFUNCTION,  Curl::read_callback);
 	curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION,  Curl::data_callback);
+	curl_easy_setopt(easy, CURLOPT_XFERINFOFUNCTION, Curl::progress_callback);
 
 	curl_easy_setopt(easy, CURLOPT_SUPPRESS_CONNECT_HEADERS, 1);
+	curl_easy_setopt(easy, CURLOPT_NOPROGRESS, 0);
 
 	onRead.Reset(Napi::Function::New(info.Env(), Curl::dummy, "dummy"), 1);
 
@@ -443,6 +454,10 @@ size_t Curl::read_callback(char *buffer, size_t size, size_t nitems, void *userd
 
 size_t Curl::data_callback(char *ptr, size_t size, size_t nmemb, void *userdata) {
 	return static_cast<Curl*>(userdata)->on_data(ptr, size, nmemb);
+}
+
+int Curl::progress_callback(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+	return static_cast<Curl*>(userdata)->cancelTransfer;
 }
 
 poll_ctx_t* Curl::create_poll_context(const curl_socket_t& sockfd, CURL* easy) {
