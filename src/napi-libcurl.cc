@@ -186,6 +186,7 @@ void Curl::on_end() {
 }
 
 void Curl::on_error(CURLcode code) {
+	DBG_LOG("Curl::on_error");
 	Napi::Env env = Env();
 	Napi::HandleScope scope(env);
 

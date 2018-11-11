@@ -1,5 +1,7 @@
 'use strict';
 
+const debuglog = require('util').debuglog('napi-curl');
+
 function requireAddon(name){
 	try {
 		return require('./build/Release/' + name);
@@ -7,16 +9,10 @@ function requireAddon(name){
 		if ( e.code !== 'MODULE_NOT_FOUND' )
 			throw e;
 
-		console.error(`Try require '${name}' in debug mode`);
+		debuglog(`Try require '${name}' in debug mode`);
 		return require('./build/Debug/' + name);
 	}
 }
-
-const debuglog = require('util').debuglog('napi-curl');
-// const DEBUG = 0;
-// const DBG_LOG = DEBUG
-// 	? (fmt, ...args) => console.error("DEBUG JS: " + fmt, ...args)
-// 	: () => {};
 
 const { Curl: NapiCurl } = requireAddon('curl_client');
 const { TextDecoder } = require('util');
