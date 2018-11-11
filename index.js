@@ -33,7 +33,7 @@ class Curl extends NapiCurl {
 	constructor(defaults) {
 		super();
 		this.defaults = Object.assign({}, defaults);
-		this.setOpt(this.defaults);
+		this.reset();
 	}
 
 	/**
@@ -60,12 +60,16 @@ class Curl extends NapiCurl {
 	setOpt(key, val) {
 		if ( typeof key === 'string' ) {
 			key = key.replace(/^CURLOPT_/, '');
+
+			if ( key === 'HTTPHEADER' && this.defaults[key] instanceof Array )
+				val = this.defaults[key].concat(val);
+
 			super.setOpt(key, val);
 			return this;
 		}
 
-		if ( typeof key === 'object' && key) {
-			Object.entries(key).forEach( ([key, val]) => super.setOpt(key.replace(/^CURLOPT_/, ''), val) );
+		if ( typeof key === 'object' && key !== null ) {
+			Object.entries(key).forEach( ([key, val]) => this.setOpt(key, val) );
 			return this;
 		}
 
@@ -74,14 +78,20 @@ class Curl extends NapiCurl {
 
 	/**
 	 * Reset option to default
-	 * @param {...*} pass - Pass options to stOpt
+	 * @param {...*} pass - Pass options to setOpt
 	 * @return {Curl} This
 	 */
 	reset(...options) {
 		super.reset();
-		this.setOpt(this.defaults);
-		if (options[0])
+		const defaults = this.defaults;
+
+		if ( typeof defaults === 'object' && defaults !== null )
+			Object.entries(defaults)
+				.forEach( ([key, val]) => super.setOpt(key.replace(/^CURLOPT_/, ''), val) );
+
+		if (options.length)
 			this.setOpt(...options);
+
 		return this;
 	}
 
