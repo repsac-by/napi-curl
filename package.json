@@ -1,6 +1,6 @@
 {
   "name": "napi-curl",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "napi bindings for libcurl",
   "main": "index.js",
   "author": "surefire",
