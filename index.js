@@ -142,8 +142,10 @@ class Curl extends NapiCurl {
 
 			let headerResolved = false;
 			const stream = new Readable({
-				read: () => this.readStart()
+				read: () => this.readStart(),
 			});
+
+			stream.on('error', () => this.cancel());
 
 			req.onError = err => {
 				rejectHeader(err);
