@@ -1,22 +1,19 @@
 'use strict';
 
-const debuglog = require('util').debuglog('napi-curl');
-
-function requireAddon(name){
+function requireAddon(name) {
 	try {
 		return require('./build/Release/' + name);
 	} catch (e) {
-		if ( e.code !== 'MODULE_NOT_FOUND' )
+		if (process.env.NODE_ENV === 'production' || e.code !== 'MODULE_NOT_FOUND' )
 			throw e;
 
-		debuglog(`Try require '${name}' in debug mode`);
+		console.error(`Try require '${name}' in debug mode`);
 		return require('./build/Debug/' + name);
 	}
 }
 
 const { Curl: NapiCurl } = requireAddon('curl_client');
-const { TextDecoder } = require('util');
-const { parseHeaderLine } = require('./helpers');
+const Response = require('./response');
 const { Readable } = require('stream');
 
 /** Class representing Curl handle **/
@@ -105,12 +102,10 @@ class Curl extends NapiCurl {
 	 * @param  {string}   opts.dataAs - Data can be returned in two ways as a 'promise' or as a 'stream'
 	 * @param  {string}   opts.post   - Data to send in an HTTP POST operation
 	 * @param  {Readable} opts.put    - Uploading means using the PUT request
-	 * @return {Promise}  Response that is called as soon as the header is received
+	 * @return {Promise<Response>}  Response that is called as soon as the header is received
 	 */
 	perform(opts = {}) {
-		debuglog('perform');
-		const self = this;
-		return new Promise( (resolve, reject) => {
+		return new Promise( (resolveHeader, rejectHeader) => {
 
 			const req = {};
 
@@ -118,11 +113,8 @@ class Curl extends NapiCurl {
 			if (opts.put instanceof Readable) {
 				this.setOpt('UPLOAD', 1);
 				const src = opts.put
-					.on('error', reject)
-					.on('readable', () => {
-						debuglog('put_readable');
-						this.resume();
-					});
+					.on('error', rejectHeader)
+					.on('readable', () => this.resume());
 
 				req.onRead = len => {
 					const chunk = src.read(Math.min(len, src.readableLength));
@@ -148,98 +140,31 @@ class Curl extends NapiCurl {
 			if ('post' in opts)
 				throw new TypeError(`'post' must be a string`);
 
-			switch (opts.dataAs || 'promise') {
+			let headerResolved = false;
+			const stream = new Readable({
+				read: () => this.readStart()
+			});
 
-			case 'promise': {
-				const decoder = new TextDecoder('utf8');
-				let isHeeader = false;
+			req.onError = err => {
+				rejectHeader(err);
+				stream.destroy(err);
+			};
 
-				const data = new Promise( (resolveBody, rejectBody) => {
-					debuglog('body promise');
-					let body = '';
+			req.onHeader = rawHeaders => {
+				headerResolved = true;
+				resolveHeader(new Response(this, rawHeaders, stream));
+			};
 
-					req.onError = err => {
-						debuglog('onError');
-						reject(err);
-						rejectBody(err);
-					};
+			req.onData = buf => {
+				// We have to copy the data or it will be destroyed.
+				stream.push(new Uint8Array(buf.slice(0))) || this.readStop();
+			};
 
-					req.onData = buf => {
-						debuglog('onData');
-						body += decoder.decode(buf, { stream: true });
-					};
-
-					req.onEnd = () => {
-						debuglog('onEnd');
-						if (!isHeeader)
-							return req.onError(new Error('Connection closed without response'));
-
-						body += decoder.decode();
-						resolveBody(body);
-					};
-				} );
-
-				req.onHeader = rawHeaders => {
-					debuglog('onHeader');
-					isHeeader = true;
-					const headers = rawHeaders.reduce(parseHeaderLine, {});
-
-					resolve({
-						rawHeaders,
-						headers,
-						data
-					});
-				};
-
-				// Suppress internal error;
-				data.catch(() => {});
-				break;
-			}
-
-			case 'stream': {
-				let isHeeader = false;
-				const stream = new Readable({
-					read() {
-						self.readStart();
-					},
-					destroy() {
-						debuglog('stream destroy');
-					}
-				});
-
-				req.onError = err => {
-					reject(err);
-					stream.emit('error', err);
-				};
-
-				req.onHeader = rawHeaders => {
-					isHeeader = true;
-					const headers = rawHeaders.reduce(parseHeaderLine, {});
-
-					resolve({
-						rawHeaders,
-						headers,
-						data: stream,
-					});
-				};
-
-				req.onData = buf => {
-					if (stream.push(new Uint8Array(buf.slice(0))))
-						return;
-
-					self.readStop();
-				};
-
-				req.onEnd = () => {
-					if (!isHeeader)
-						return req.onError(new Error('Connection closed without response'));
+			req.onEnd = () => {
+				if (headerResolved)
 					stream.push(null);
-				};
-				break;
-			}
-			default:
-				throw new TypeError(`dataAs: expect 'promise' or 'stream'`);
-			}
+				req.onError(new Error('Connection closed without response'));
+			};
 
 			super.perform(req);
 		});

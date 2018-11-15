@@ -9,12 +9,12 @@ const ignoreDuplicateOf = new Set([
 ]);
 
 module.exports.parseHeaderLine = (acc, line) => {
-	const [rawKey, val] = line.split(':', 2).map(v => v.trim());
-
-	if (undefined === val)
+	const pair = /^([^:]*):(.*)$/.exec(line);
+	if (null === pair)
 		return acc;
 
-	const key = rawKey.toLowerCase();
+	const key = pair[1].trim().toLowerCase();
+	const val = pair[2].trim();
 
 	if ( key in acc ) {
 		if ( 'set-cookie' === key )

@@ -393,6 +393,12 @@ void Curl::clean() {
 
 	slists.clear();
 	header.clear();
+
+	onData.Reset();
+	onHeader.Reset();
+	onEnd.Reset();
+	onError.Reset();
+	onRead.Reset();
 }
 
 Napi::Value Curl::reset(const Napi::CallbackInfo& info) {
