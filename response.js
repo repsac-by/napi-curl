@@ -11,6 +11,10 @@ module.exports = class Response {
 	constructor(curl, rawHeaders, body) {
 		this.curl = curl;
 		this.rawHeaders = rawHeaders;
+
+		/**
+		 * @type {Readable}
+		 */
 		this.body = body;
 	}
 

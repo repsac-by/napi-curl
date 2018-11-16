@@ -164,7 +164,7 @@ class Curl extends NapiCurl {
 
 			req.onEnd = () => {
 				if (headerResolved)
-					stream.push(null);
+					return stream.push(null);
 				req.onError(new Error('Connection closed without response'));
 			};
 
