@@ -99,7 +99,6 @@ class Curl extends NapiCurl {
 	/**
 	 * Perform request
 	 * @param  {Object} [opts={}]
-	 * @param  {string}   opts.dataAs - Data can be returned in two ways as a 'promise' or as a 'stream'
 	 * @param  {string}   opts.post   - Data to send in an HTTP POST operation
 	 * @param  {Readable} opts.put    - Uploading means using the PUT request
 	 * @return {Promise<Response>}  Response that is called as soon as the header is received
