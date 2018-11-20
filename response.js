@@ -1,5 +1,8 @@
 'use strict';
 
+/** @typedef { import('./index').Curl }    Curl */
+/** @typedef { import('stream').Readable } Readable */
+
 const { parseHeaderLine } = require('./helpers');
 
 module.exports = class Response {
@@ -11,10 +14,6 @@ module.exports = class Response {
 	constructor(curl, rawHeaders, body) {
 		this.curl = curl;
 		this.rawHeaders = rawHeaders;
-
-		/**
-		 * @type {Readable}
-		 */
 		this.body = body;
 	}
 
