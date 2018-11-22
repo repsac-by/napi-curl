@@ -1,14 +1,58 @@
 #!//usr/bin/node
 'use strict';
 const fs = require('fs');
+const https = require('https');
 const readline = require('readline');
+const { spawnSync } = require('child_process');
 
-function curlh() {
-	const optionsSet   = new Set();
-	const infos     = [];
-	const codes     = [];
-	const optionRe  = /^\s*CINIT\((\w+), (LONG|OFF_T|DOUBLE|STRING|OBJECT)/;
-	const infoRe    = /^\s*CURLINFO_(\w+)\s*=[^C]*CURLINFO_(LONG|DOUBLE|OFF_T|STRING|SLIST)/;
+
+(async () => {
+	const version = curlVesrion();
+	const path = setoptPath(version);
+	if (!fs.existsSync(path))
+		await downloadSetopt(version, path);
+
+	await Promise.all([version, curlh(), setoptc(path)]).then(createMaps);
+
+})();
+
+function curlVesrion () {
+	const resp = spawnSync('pkg-config', ['--modversion', 'libcurl']);
+	if (resp.error)
+		throw resp.error;
+
+	if (resp.status !== 0)
+		throw new Error('pkg-config return status:', resp.status);
+
+	return resp.stdout.toString().trim();
+}
+
+function setoptPath (version) {
+	return `./setopts/setopt.${version}.c`;
+}
+
+function downloadSetopt (version, path) {
+	const _version = version.replace(/\./g, '_');
+
+	const url = `https://raw.githubusercontent.com/curl/curl/curl-${_version}/lib/setopt.c`;
+
+	return new Promise((resolve, reject) => {
+		console.log('dl', url);
+
+		https.get(url, resp => {
+			resp.pipe(fs.createWriteStream(path))
+				.on('error', reject)
+				.on('end', resolve);
+		});
+	});
+}
+
+function curlh () {
+	const optionsSet = new Set();
+	const infos = [];
+	const codes = [];
+	const optionRe = /^\s*CINIT\((\w+), (LONG|OFF_T|DOUBLE|STRING|OBJECT)/;
+	const infoRe = /^\s*CURLINFO_(\w+)\s*=[^C]*CURLINFO_(LONG|DOUBLE|OFF_T|STRING|SLIST)/;
 	const curlCodeRe = /^\s*CURLE_(\w+),/;
 
 	return new Promise(resolve =>
@@ -18,71 +62,74 @@ function curlh() {
 		}).on('line', line => {
 
 			const opt = optionRe.exec(line);
-			if ( opt ) {
+			if (opt) {
 				optionsSet.add(opt[1]);
 				return;
 			}
 
 			const i = infoRe.exec(line);
-			if ( i ) {
+			if (i) {
 				infos.push(`{ "${i[1]}", CURLINFO_${i[1]} }`);
 				return;
 			}
 
 			const code = curlCodeRe.exec(line);
-			if ( code ) {
-				codes.push(`{ CURLE_${code[1]}, "${code[1]}" }`);
+			if (code) {
+				codes.push(`{ CURLE_${code[1]}, "CURLE_${code[1]}" }`);
 				return;
 			}
-		}).on('close', () => resolve({optionsSet, infos, codes}))
+		}).on('close', () => resolve({ optionsSet, infos, codes }))
 	);
 }
 
-function setoptc() { return new Promise( resolve => {
-	const options  = [];
-	const optionRe = /^\s*case CURLOPT_(\w+):|\s*default:/;
-	const vaaargRe = /va_arg\(param,\s*([^),]+)/;
-	const vaaargRe2 = /\(([^),]+)\)va_arg\(param,\s*void \*\)/;
+function setoptc (path) {
+	return new Promise(resolve => {
+		const options = [];
+		const optionRe = /^\s*case CURLOPT_(\w+):|\s*default:/;
+		const vaaargRe = /va_arg\(param,\s*([^),]+)/;
+		const vaaargRe2 = /\(([^),]+)\)va_arg\(param,\s*void \*\)/;
 
-	const napiValuetypes = {
-		'long'               : 'napi_number',
-		'unsigned long'      : 'napi_number',
-		'curl_off_t'         : 'napi_number',
-		'char *'             : 'napi_string',
-		'struct curl_slist *': 'napi_object',
-	};
+		const napiValuetypes = {
+			'long': 'napi_number',
+			'unsigned long': 'napi_number',
+			'curl_off_t': 'napi_number',
+			'char *': 'napi_string',
+			'struct curl_slist *': 'napi_object',
+		};
 
-	let currentOptions = [];
+		let currentOptions = [];
 
-	readline.createInterface({
+		readline.createInterface({
 
-		input: fs.createReadStream('/tmp/setopt.c'),
-		crlfDelay: Infinity
+			input: fs.createReadStream(path),
+			crlfDelay: Infinity
 
-	}).on('line', line => {
-		const opt = optionRe.exec(line);
-		if ( opt )
-			return currentOptions.push(opt[1]);
+		}).on('line', line => {
+			const opt = optionRe.exec(line);
+			if (opt)
+				return currentOptions.push(opt[1]);
 
-		if ( ! currentOptions.length )
-			return;
+			if (!currentOptions.length)
+				return;
 
-		const va = vaaargRe2.exec(line) || vaaargRe.exec(line);
-		if ( !va )
-			return;
+			const va = vaaargRe2.exec(line) || vaaargRe.exec(line);
+			if (!va)
+				return;
 
-		const napiType = napiValuetypes[va[1].trim()];
-		if ( napiType )
-			for (const opt of currentOptions)
-				options.push({opt,  cpp: `{ "${opt}", { CURLOPT_${opt}, ${napiType} } }`});
+			const napiType = napiValuetypes[va[1].trim()];
+			if (napiType)
+				for (const opt of currentOptions)
+					options.push({ opt, cpp: `{ "${opt}", { CURLOPT_${opt}, ${napiType} } }` });
 
-		currentOptions = [];
+			currentOptions = [];
 
-	}).on('close', () => resolve({ options }));
-}); }
+		}).on('close', () => resolve({ options }));
+	});
+}
 
-Promise.all([curlh(), setoptc()]).then( ([ { optionsSet, infos, codes }, { options }]) => {
+function createMaps ([version, { optionsSet, infos, codes }, { options }]) {
 	fs.writeFileSync('src/napi-libcurl-maps.hpp', `\
+// curl ${version}
 #include <node/node_api.h>
 #include <curl/curl.h>
 #include <map>
@@ -104,4 +151,4 @@ std::map<CURLcode, std::string> mapCURLcode {
 	${codes.join(',\n\t')}
 };
 `	);
-});
+}
