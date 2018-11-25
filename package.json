@@ -2,7 +2,7 @@
   "name": "napi-curl",
   "version": "0.3.4",
   "description": "napi bindings for libcurl",
-  "main": "index.js",
+  "main": "./lib/index.js",
   "author": "surefire",
   "license": "MIT",
   "private": true,
