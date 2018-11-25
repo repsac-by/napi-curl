@@ -6,6 +6,7 @@
   "author": "surefire",
   "license": "MIT",
   "private": true,
+  "engines": { "node": ">=8.3.0" },
   "dependencies": {
     "node-addon-api": "^1.6.0"
   },
