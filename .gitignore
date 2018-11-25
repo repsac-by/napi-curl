@@ -3,4 +3,3 @@ node_modules/
 .vscode/
 compile_commands.json
 example.js
-server.js
