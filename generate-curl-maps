@@ -1,5 +1,6 @@
 #!//usr/bin/node
 'use strict';
+
 const fs = require('fs');
 const https = require('https');
 const readline = require('readline');
@@ -12,12 +13,12 @@ const { spawnSync } = require('child_process');
 	if (!fs.existsSync(path))
 		await downloadSetopt(version, path);
 
-	await Promise.all([version, curlh(), setoptc(path)]).then(createMaps);
+	await Promise.all([ version, curlh(), setoptc(path) ]).then(createMaps);
 
 })();
 
 function curlVesrion () {
-	const resp = spawnSync('pkg-config', ['--modversion', 'libcurl']);
+	const resp = spawnSync('pkg-config', [ '--modversion', 'libcurl' ]);
 	if (resp.error)
 		throw resp.error;
 
@@ -58,7 +59,7 @@ function curlh () {
 	return new Promise(resolve =>
 		readline.createInterface({
 			input: fs.createReadStream('/usr/include/curl/curl.h'),
-			crlfDelay: Infinity
+			crlfDelay: Infinity,
 		}).on('line', line => {
 
 			const opt = optionRe.exec(line);
@@ -102,7 +103,7 @@ function setoptc (path) {
 		readline.createInterface({
 
 			input: fs.createReadStream(path),
-			crlfDelay: Infinity
+			crlfDelay: Infinity,
 
 		}).on('line', line => {
 			const opt = optionRe.exec(line);
@@ -127,7 +128,7 @@ function setoptc (path) {
 	});
 }
 
-function createMaps ([version, { optionsSet, infos, codes }, { options }]) {
+function createMaps ([ version, { optionsSet, infos, codes }, { options } ]) {
 	fs.writeFileSync('src/napi-libcurl-maps.hpp', `\
 // curl ${version}
 #include <node/node_api.h>
