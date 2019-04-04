@@ -26,10 +26,17 @@ const curl = new Curl({ USERAGENT: 'napi-curl' })
 
 curl
 	.setOpt({
-		URL: 'http://example.com'
-		'HTTPHEADER', [
+		URL: 'http://example.com',
+		ACCEPT_ENCODING: '',
+		AUTOREFERER: 1,
+		FOLLOWLOCATION: 1,
+		COOKIEJAR: '',
+		CONNECTTIMEOUT: 120,
+		TIMEOUT: 120,
+		VERBOSE: 1,
+		HTTPHEADER: [
 			'Connection: keep-alive'
-		]
+		],
 	 })
 	.perform()
 	.then(res => {
@@ -46,7 +53,7 @@ curl
 curl
 	.setOpt({
 		URL: 'http://example.com'
-		'HTTPHEADER', [
+		HTTPHEADER: [
 			'Connection: keep-alive'
 		]
 	 })
