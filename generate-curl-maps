@@ -9,11 +9,8 @@ const { spawnSync } = require('child_process');
 
 (async () => {
 	const version = curlVesrion();
-	const path = setoptPath(version);
-	if (!fs.existsSync(path))
-		await downloadSetopt(version, path);
 
-	await Promise.all([ version, curlh(), setoptc(path) ]).then(createMaps);
+	await Promise.all([ version, curlh() ]).then(createMaps);
 
 })();
 
@@ -32,29 +29,21 @@ function setoptPath (version) {
 	return `./setopts/setopt.${version}.c`;
 }
 
-function downloadSetopt (version, path) {
-	const _version = version.replace(/\./g, '_');
-
-	const url = `https://raw.githubusercontent.com/curl/curl/curl-${_version}/lib/setopt.c`;
-
-	return new Promise((resolve, reject) => {
-		console.log('dl', url);
-
-		https.get(url, resp => {
-			resp.pipe(fs.createWriteStream(path))
-				.on('error', reject)
-				.on('end', resolve);
-		});
-	});
-}
-
 function curlh () {
-	const optionsSet = new Set();
+	const options = [];
 	const infos = [];
 	const codes = [];
-	const optionRe = /^\s*CINIT\((\w+), (LONG|OFF_T|DOUBLE|STRING|OBJECT)/;
+	const optionRe = /CURLOPT_([^,]+), CURLOPTTYPE_(LONG|OBJECT|STRING|SLIST|OFF_T)/;
 	const infoRe = /^\s*CURLINFO_(\w+)\s*=[^C]*CURLINFO_(LONG|DOUBLE|OFF_T|STRING|SLIST)/;
 	const curlCodeRe = /^\s*CURLE_(\w+),/;
+
+	const napiTypes = {
+		LONG: 'napi_number',
+		OFF_T: 'napi_number',
+		STRING: 'napi_string',
+		SLIST: 'napi_object',
+		OBJECT: 'napi_object',
+	};
 
 	return new Promise(resolve =>
 		readline.createInterface({
@@ -64,7 +53,7 @@ function curlh () {
 
 			const opt = optionRe.exec(line);
 			if (opt) {
-				optionsSet.add(opt[1]);
+				options.push(`{ "${opt[1]}", { CURLOPT_${opt[1]}, ${napiTypes[opt[2]]} } }`);
 				return;
 			}
 
@@ -79,56 +68,11 @@ function curlh () {
 				codes.push(`{ CURLE_${code[1]}, "CURLE_${code[1]}" }`);
 				return;
 			}
-		}).on('close', () => resolve({ optionsSet, infos, codes }))
+		}).on('close', () => resolve({ options, infos, codes }))
 	);
 }
 
-function setoptc (path) {
-	return new Promise(resolve => {
-		const options = [];
-		const optionRe = /^\s*case CURLOPT_(\w+):|\s*default:/;
-		const vaaargRe = /va_arg\(param,\s*([^),]+)/;
-		const vaaargRe2 = /\(([^),]+)\)va_arg\(param,\s*void \*\)/;
-
-		const napiValuetypes = {
-			'long': 'napi_number',
-			'unsigned long': 'napi_number',
-			'curl_off_t': 'napi_number',
-			'char *': 'napi_string',
-			'struct curl_slist *': 'napi_object',
-		};
-
-		let currentOptions = [];
-
-		readline.createInterface({
-
-			input: fs.createReadStream(path),
-			crlfDelay: Infinity,
-
-		}).on('line', line => {
-			const opt = optionRe.exec(line);
-			if (opt)
-				return currentOptions.push(opt[1]);
-
-			if (!currentOptions.length)
-				return;
-
-			const va = vaaargRe2.exec(line) || vaaargRe.exec(line);
-			if (!va)
-				return;
-
-			const napiType = napiValuetypes[va[1].trim()];
-			if (napiType)
-				for (const opt of currentOptions)
-					options.push({ opt, cpp: `{ "${opt}", { CURLOPT_${opt}, ${napiType} } }` });
-
-			currentOptions = [];
-
-		}).on('close', () => resolve({ options }));
-	});
-}
-
-function createMaps ([ version, { optionsSet, infos, codes }, { options } ]) {
+function createMaps ([ version, { options, infos, codes } ]) {
 	fs.writeFileSync('src/napi-libcurl-maps.hpp', `\
 // curl ${version}
 #include <node/node_api.h>
@@ -141,7 +85,7 @@ using CURLoptionNapiType = struct {
 };
 
 std::map<std::string, CURLoptionNapiType> mapCURLoption {
-	${options.filter(v => optionsSet.has(v.opt)).map(v => v.cpp).join(',\n\t')}
+	${options.join(',\n\t')}
 };
 
 std::map<std::string, CURLINFO> mapCURLinfo {
