@@ -1,5 +1,6 @@
 #include <cassert>
 #include <string>
+#include <stdexcept>
 #include "napi-libcurl.hpp"
 #include "napi-libcurl-maps.hpp"
 
