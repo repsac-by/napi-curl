@@ -53,6 +53,8 @@ function curlh () {
 
 			const opt = optionRe.exec(line);
 			if (opt) {
+				if (opt[1] === "COPYPOSTFIELDS")
+					opt[2] = "STRING";
 				options.push(`{ "${opt[1]}", { CURLOPT_${opt[1]}, ${napiTypes[opt[2]]} } }`);
 				return;
 			}
