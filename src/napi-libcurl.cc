@@ -369,7 +369,7 @@ void Curl::perform(const Napi::CallbackInfo& info) {
 
 	const auto& options = info[0].As<Napi::Object>();
 
-	for ( const std::string& f: {"onError", "onHeader", "onData", "onEnd"} )
+	for ( const std::string f: {"onError", "onHeader", "onData", "onEnd"} )
 		if ( !options[f].IsFunction() )
 			throw Napi::Error::New(env, "Curl#perform expect '" + f + "' callback function");
 
