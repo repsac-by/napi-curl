@@ -1,5 +1,7 @@
 build/
 node_modules/
 .vscode/
+setopts/
+test/
 compile_commands.json
 example.js
