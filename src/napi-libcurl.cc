@@ -144,11 +144,24 @@ void Curl::cancel(const Napi::CallbackInfo& info) {
 
 void Curl::pause(const Napi::CallbackInfo& info) {
 	DBG_LOG("Curl::pause");
-	curl_easy_pause(easy, CURLPAUSE_ALL);
+	Napi::Env env = Env();
+	Napi::HandleScope scope(env);
+
+	CURLcode res = curl_easy_pause(easy, CURLPAUSE_ALL);
+
+	if (CURLE_OK != res)
+		throw Napi::TypeError::New(env, "Curl#pause: " + mapCURLcode.at(res));
 }
 
 void Curl::resume(const Napi::CallbackInfo& info) {
 	DBG_LOG("Curl::resume");
+	Napi::Env env = Env();
+	Napi::HandleScope scope(env);
+
+	CURLcode res = curl_easy_pause(easy, CURLPAUSE_CONT);
+
+	if (CURLE_OK != res)
+		throw Napi::TypeError::New(env, "Curl#resume: " + mapCURLcode.at(res));
 }
 
 void Curl::upkeep(const Napi::CallbackInfo &info) {
@@ -263,7 +276,10 @@ Napi::Value Curl::getInfo(const Napi::CallbackInfo& info) {
 	switch (CURLINFO_TYPEMASK & key) {
 		case CURLINFO_LONG: {
 			long v;
-			curl_easy_getinfo(easy, key, &v);
+			CURLcode res = curl_easy_getinfo(easy, key, &v);
+
+			if (CURLE_OK != res)
+				throw Napi::TypeError::New(env, "Curl#pause: " + mapCURLcode.at(res));
 
 			if (CURLINFO_HTTP_VERSION == key) switch (v) {
 				case CURL_HTTP_VERSION_1_0: return Napi::String::New(env, "1.0");
@@ -276,23 +292,39 @@ Napi::Value Curl::getInfo(const Napi::CallbackInfo& info) {
 		}
 		case CURLINFO_DOUBLE: {
 			double v;
-			curl_easy_getinfo(easy, key, &v);
+			CURLcode res = curl_easy_getinfo(easy, key, &v);
+
+			if (CURLE_OK != res)
+				throw Napi::TypeError::New(env, "Curl#getInfo: " + mapCURLcode.at(res));
+
 			return Napi::Number::New(env, v);
 		}
 		case CURLINFO_OFF_T: {
 			curl_off_t v;
-			curl_easy_getinfo(easy, key, &v);
+			CURLcode res = curl_easy_getinfo(easy, key, &v);
+
+			if (CURLE_OK != res)
+				throw Napi::TypeError::New(env, "Curl#getInfo: " + mapCURLcode.at(res));
+
 			return Napi::Number::New(env, v);
 		}
 		case CURLINFO_STRING: {
 			char* v = nullptr;
-			curl_easy_getinfo(easy, key, &v);
+			CURLcode res = curl_easy_getinfo(easy, key, &v);
+
+			if (CURLE_OK != res)
+				throw Napi::TypeError::New(env, "Curl#getInfo: " + mapCURLcode.at(res));
+
 			return Napi::String::New(env, v);
 		}
 		case CURLINFO_SLIST: {
 			struct curl_slist* slist = nullptr;
-			curl_easy_getinfo(easy, key, &slist);
-			const auto& array = Napi::Array::New(env);
+			CURLcode res = curl_easy_getinfo(easy, key, &slist);
+
+			if (CURLE_OK != res)
+				throw Napi::TypeError::New(env, "Curl#getInfo: " + mapCURLcode.at(res));
+
+			const auto &array = Napi::Array::New(env);
 
 			struct curl_slist *each = slist;
 			uint32_t i = 0;
@@ -369,7 +401,7 @@ Napi::Value Curl::setOpt(const Napi::CallbackInfo& info) {
 	}
 
 	if ( CURLE_OK != res )
-		throw Napi::TypeError::New(env, "Curl#setOpt: curl_easy_setopt: " + mapCURLcode.at(res));
+		throw Napi::TypeError::New(env, "Curl#setOpt: " + mapCURLcode.at(res));
 
 	return info.This();
 }
