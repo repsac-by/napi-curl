@@ -149,7 +149,17 @@ void Curl::pause(const Napi::CallbackInfo& info) {
 
 void Curl::resume(const Napi::CallbackInfo& info) {
 	DBG_LOG("Curl::resume");
-	curl_easy_pause(easy, CURLPAUSE_CONT);
+}
+
+void Curl::upkeep(const Napi::CallbackInfo &info) {
+	DBG_LOG("Curl::upkeep");
+	Napi::Env env = Env();
+	Napi::HandleScope scope(env);
+
+	CURLcode res = curl_easy_upkeep(easy);
+
+	if (CURLE_OK != res)
+		throw Napi::TypeError::New(env, "Curl#upkeep: " + mapCURLcode.at(res));
 }
 
 void Curl::readStop(const Napi::CallbackInfo& info) {
@@ -204,6 +214,7 @@ Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
 		InstanceMethod("cancel",    &Curl::cancel),
 		InstanceMethod("pause",     &Curl::pause),
 		InstanceMethod("resume",    &Curl::resume),
+		InstanceMethod("upkeep",    &Curl::upkeep),
 		InstanceMethod("readStop",  &Curl::readStop),
 		InstanceMethod("readStart", &Curl::readStart),
 		InstanceAccessor("onError", nullptr, &Curl::onErrorSetter),

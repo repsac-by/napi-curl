@@ -62,6 +62,7 @@ class Curl: public Napi::ObjectWrap<Curl> {
 		void cancel(const Napi::CallbackInfo& info);
 		void pause(const Napi::CallbackInfo& info);
 		void resume(const Napi::CallbackInfo& info);
+		void upkeep(const Napi::CallbackInfo &info);
 		void readStop(const Napi::CallbackInfo& info);
 		void readStart(const Napi::CallbackInfo& info);
 		void onErrorSetter(const Napi::CallbackInfo& info, const Napi::Value& value);
