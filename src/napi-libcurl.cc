@@ -35,6 +35,7 @@ Curl::Curl(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Curl>(info) {
 }
 
 Curl::~Curl() {
+	DBG_LOG("Curl::~Curl");
 	clean();
 	curl_easy_cleanup(easy);
 }
