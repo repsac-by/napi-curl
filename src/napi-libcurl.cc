@@ -641,8 +641,12 @@ void Curl::check_multi_info() {
 
 				if ( CURLE_OK == code )
 					self->on_end();
-				else
+				else {
+					curl_socket_t sockfd;
+					curl_easy_getinfo(easy, CURLINFO_ACTIVESOCKET, &sockfd);
+					close(sockfd);
 					self->on_error(code);
+				}
 
 				break;
 
