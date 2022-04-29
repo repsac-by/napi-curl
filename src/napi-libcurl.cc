@@ -633,9 +633,6 @@ void Curl::check_multi_info() {
 				easy = message->easy_handle;
 				code = message->data.result;
 
-				curl_multi_remove_handle(multi, easy);
-				/* Do not use message data after calling curl_multi_remove_handle() */
-
 				Curl *self;
 				curl_easy_getinfo(easy, CURLINFO_PRIVATE, &self);
 
@@ -645,8 +642,12 @@ void Curl::check_multi_info() {
 					curl_socket_t sockfd;
 					curl_easy_getinfo(easy, CURLINFO_ACTIVESOCKET, &sockfd);
 					close(sockfd);
+
 					self->on_error(code);
 				}
+
+				curl_multi_remove_handle(multi, easy);
+				/* Do not use message data after calling curl_multi_remove_handle() */
 
 				break;
 
