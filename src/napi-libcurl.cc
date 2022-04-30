@@ -643,9 +643,7 @@ void Curl::check_multi_info() {
 				}
 				else {
 					if ( CURLE_OPERATION_TIMEDOUT == code ) {
-						curl_socket_t sockfd;
-						curl_easy_getinfo(easy, CURLINFO_ACTIVESOCKET, &sockfd);
-						close(sockfd);
+						curl_easy_setopt(easy, CURLOPT_FORBID_REUSE, 1);
 					}
 
 					curl_multi_remove_handle(multi, easy);
