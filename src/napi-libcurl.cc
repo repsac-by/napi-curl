@@ -642,13 +642,14 @@ void Curl::check_multi_info() {
 					self->on_end();
 				}
 				else {
-					curl_socket_t sockfd;
-					curl_easy_getinfo(easy, CURLINFO_ACTIVESOCKET, &sockfd);
-					close(sockfd);
+					if ( CURLE_OPERATION_TIMEDOUT == code ) {
+						curl_socket_t sockfd;
+						curl_easy_getinfo(easy, CURLINFO_ACTIVESOCKET, &sockfd);
+						close(sockfd);
+					}
 
 					curl_multi_remove_handle(multi, easy);
 					/* Do not use message data after calling curl_multi_remove_handle() */
-
 					self->on_error(code);
 				}
 
