@@ -1,4 +1,4 @@
-// curl 7.82.0
+// curl 7.83.0
 #include <node/node_api.h>
 #include <curl/curl.h>
 #include <map>
