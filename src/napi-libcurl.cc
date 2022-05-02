@@ -644,7 +644,7 @@ void Curl::check_multi_info() {
 				else {
 					curl_socket_t sockfd;
 					if (CURLE_OPERATION_TIMEDOUT == code && CURLE_OK == curl_easy_getinfo(easy, CURLINFO_ACTIVESOCKET, &sockfd)) {
-						shutdown(sockfd, SHUT_RDWR);
+						close(sockfd);
 					}
 
 					curl_multi_remove_handle(multi, easy);
