@@ -479,7 +479,7 @@ void Curl::on_timeout(uv_timer_t *req) {
 
 	int running_handles;
 	curl_multi_socket_action(multi, CURL_SOCKET_TIMEOUT, 0, &running_handles);
-	Curl::check_multi_info();
+	//Curl::check_multi_info();
 }
 
 int Curl::start_timeout(CURLM *multi, long timeout_ms, void *userp) {
@@ -560,13 +560,18 @@ void Curl::curl_poll_cb(uv_poll_t* req, int status, int events) {
 	int running_handles;
 	int flags = 0;
 
+	if (status < 0)
+		flags = CURL_CSELECT_ERR;
 	if (events & UV_READABLE)
 		flags |= CURL_CSELECT_IN;
 	if (events & UV_WRITABLE)
 		flags |= CURL_CSELECT_OUT;
 
-	curl_multi_socket_action(multi, ctx->sock, flags, &running_handles);
-	Curl::check_multi_info();
+	CURLMcode code = curl_multi_socket_action(multi, ctx->sock, flags, &running_handles);
+	if (code != CURLM_OK)
+		throw std::runtime_error(curl_multi_strerror(code));
+
+	//Curl::check_multi_info();
 }
 
 int Curl::handle_socket(CURL* easy, curl_socket_t sockfd, int action, void *userp, void *socketp) {
