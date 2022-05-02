@@ -627,36 +627,23 @@ void Curl::check_multi_info() {
 		CURLcode code;
 		CURL *easy;
 
-		switch ( message->msg ) {
-			case CURLMSG_DONE:
-				DBG_LOG("    DONE");
-				easy = message->easy_handle;
-				code = message->data.result;
+		if (CURLMSG_DONE == message->msg) {
+			DBG_LOG("    DONE");
+			easy = message->easy_handle;
+			code = message->data.result;
 
-				Curl *self;
-				curl_easy_getinfo(easy, CURLINFO_PRIVATE, &self);
+			Curl *self;
+			curl_easy_getinfo(easy, CURLINFO_PRIVATE, &self);
 
-				if ( CURLE_OK == code ) {
-					curl_multi_remove_handle(multi, easy);
-					/* Do not use message data after calling curl_multi_remove_handle() */
-					self->on_end();
-				}
-				else {
-					curl_socket_t sockfd;
-					if (CURLE_OPERATION_TIMEDOUT == code && CURLE_OK == curl_easy_getinfo(easy, CURLINFO_ACTIVESOCKET, &sockfd)) {
-						close(sockfd);
-					}
+			curl_multi_remove_handle(multi, easy);
+			/* Do not use message data after calling curl_multi_remove_handle() */
 
-					curl_multi_remove_handle(multi, easy);
-					/* Do not use message data after calling curl_multi_remove_handle() */
-					self->on_error(code);
-				}
-
-				break;
-
-			default:
-				DBG_LOG("    CURLMSG default");
-				break;
+			if (CURLE_OK == code) {
+				self->on_end();
+			}
+			else {
+				self->on_error(code);
+			}
 		}
 	}
 }
