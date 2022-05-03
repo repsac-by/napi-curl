@@ -249,6 +249,7 @@ Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
 
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 	multi = curl_multi_init();
+	curl_multi_setopt(multi, CURLMOPT_PIPELINING, CURLPIPE_NOTHING);
 	curl_multi_setopt(multi, CURLMOPT_SOCKETFUNCTION, Curl::handle_socket);
 	curl_multi_setopt(multi, CURLMOPT_TIMERFUNCTION,  Curl::start_timeout);
 
