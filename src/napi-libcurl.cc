@@ -352,49 +352,74 @@ Napi::Value Curl::setOpt(const Napi::CallbackInfo& info) {
 	const std::string& opt_key = info[0].As<Napi::String>();
 	const Napi::Value& val = info[1];
 
-	const auto& it = mapCURLoption.find(opt_key);
-	if ( it == mapCURLoption.end() )
+	const struct curl_easyoption *opt = curl_easy_option_by_name(opt_key.c_str());
+	if (!opt)
 		throw Napi::TypeError::New(env, "Curl#setOpt unknown option: " + opt_key);
 
-	if ( val.Type() != it->second.type )
-		throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " unexpected type");
-
-	CURLoption opt = it->second.opt;
 	CURLcode   res = CURLE_UNKNOWN_OPTION;
 
 	switch ( val.Type() ) {
 		case napi_null:
-			res = curl_easy_setopt(easy, opt, NULL);
+			if (CURLOT_SLIST != opt->type
+				&& CURLOT_LONG != opt->type
+				&& CURLOT_OFF_T != opt->type
+				&& CURLOT_STRING != opt->type
+			) throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " unexpected null");
+
+			res = curl_easy_setopt(easy, opt->id, NULL);
 			break;
 
 		case napi_string:
-			res = curl_easy_setopt(easy, opt, val.As<Napi::String>().Utf8Value().c_str());
+			if (CURLOT_STRING != opt->type &&
+				CURLOPT_COPYPOSTFIELDS != opt->id
+			) throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " unexpected type string");
+
+			res = curl_easy_setopt(easy, opt->id, val.As<Napi::String>().Utf8Value().c_str());
 			break;
 
 		case napi_boolean:
-			res = curl_easy_setopt(easy, opt, val.As<Napi::Boolean>().Value());
+			if (CURLOT_LONG != opt->type)
+				throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " unexpected type boolean");
+
+			res = curl_easy_setopt(easy, opt->id, val.As<Napi::Boolean>().Value());
 			break;
 
 		case napi_number:
-			res = curl_easy_setopt(easy, opt, val.As<Napi::Number>().Int64Value());
+			if (CURLOT_LONG != opt->type && CURLOT_OFF_T != opt->type)
+				throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " unexpected type number");
+
+			res = curl_easy_setopt(easy, opt->id, val.As<Napi::Number>().Int64Value());
+			break;
+
+		case napi_bigint:
+			if (CURLOT_LONG != opt->type && CURLOT_OFF_T != opt->type)
+				throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " unexpected type bigint");
+
+			bool lossless;
+			res = curl_easy_setopt(easy, opt->id, val.As<Napi::BigInt>().Int64Value(&lossless));
 			break;
 
 		case napi_object:
-			if ( val.IsArray() ) {
-				const auto& a = val.As<Napi::Array>();
+			if (CURLOT_SLIST != opt->type)
+				throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " unexpected type object");
+
+			if (!val.IsArray())
+				throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " expected type array");
+			else {
+				const auto &a = val.As<Napi::Array>();
 				struct curl_slist *slist = nullptr;
 
 				for(uint32_t i = 0, len = a.Length(); i < len; ++i)
 					slist = curl_slist_append(slist, a[i].As<Napi::String>().Utf8Value().c_str());
 
 				if ( slist ) {
-					res = curl_easy_setopt(easy, opt, slist);
+					res = curl_easy_setopt(easy, opt->id, slist);
 
-					const auto& it = slists.find(opt);
+					const auto &it = slists.find(opt->id);
 					if ( slists.end() !=  it )
 						curl_slist_free_all(it->second);
 
-					slists[opt] = slist;
+					slists[opt->id] = slist;
 				}
 			}
 			break;
