@@ -67,7 +67,9 @@ class Curl: public Napi::ObjectWrap<Curl> {
 		void readStart(const Napi::CallbackInfo& info);
 		void onErrorSetter(const Napi::CallbackInfo& info, const Napi::Value& value);
 		void onReadSetter(const Napi::CallbackInfo& info, const Napi::Value& value);
+		void onHeaderSetter(const Napi::CallbackInfo &info, const Napi::Value &value);
 		void onDataSetter(const Napi::CallbackInfo& info, const Napi::Value& value);
+		void onEndSetter(const Napi::CallbackInfo &info, const Napi::Value &value);
 
 		int cancelTransfer = 0;
 		void on_end();

@@ -28,31 +28,14 @@ function curlh () {
 	const options = [];
 	const infos = [];
 	const codes = [];
-	const optionRe = /CURLOPT_([^,]+), CURLOPTTYPE_(LONG|OBJECT|STRING|SLIST|OFF_T)/;
 	const infoRe = /^\s*CURLINFO_(\w+)\s*=[^C]*CURLINFO_(LONG|DOUBLE|OFF_T|STRING|SLIST)/;
 	const curlCodeRe = /^\s*CURLE_(\w+),/;
-
-	const napiTypes = {
-		LONG: 'napi_number',
-		OFF_T: 'napi_number',
-		STRING: 'napi_string',
-		SLIST: 'napi_object',
-		OBJECT: 'napi_object',
-	};
 
 	return new Promise(resolve =>
 		readline.createInterface({
 			input: fs.createReadStream('/usr/include/curl/curl.h'),
 			crlfDelay: Infinity,
 		}).on('line', line => {
-
-			const opt = optionRe.exec(line);
-			if (opt) {
-				if (opt[1] === 'COPYPOSTFIELDS')
-					opt[2] = 'STRING';
-				options.push(`{ "${opt[1]}", { CURLOPT_${opt[1]}, ${napiTypes[opt[2]]} } }`);
-				return;
-			}
 
 			const i = infoRe.exec(line);
 			if (i) {
@@ -69,21 +52,12 @@ function curlh () {
 	);
 }
 
-function createMaps ([ version, { options, infos, codes } ]) {
+function createMaps ([ version, { infos, codes } ]) {
 	fs.writeFileSync('src/napi-libcurl-maps.hpp', `\
 // curl ${version}
 #include <node/node_api.h>
 #include <curl/curl.h>
 #include <map>
-
-using CURLoptionNapiType = struct {
-	CURLoption opt;
-	napi_valuetype type;
-};
-
-std::map<std::string, CURLoptionNapiType> mapCURLoption {
-	${options.join(',\n\t')}
-};
 
 std::map<std::string, CURLINFO> mapCURLinfo {
 	${infos.join(',\n\t')}

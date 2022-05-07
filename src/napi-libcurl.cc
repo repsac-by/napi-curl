@@ -71,7 +71,7 @@ size_t Curl::on_header(char *ptr, size_t size, size_t nmemb) {
 	if ( rtrim(line).length() > 0 )
 		header.push_back(line);
 	else {
-		DBG_LOG("    MakeCallback");
+		DBG_LOG("    Callback onHeader");
 		Napi::Env env = Env();
 		Napi::HandleScope scope(env);
 
@@ -191,15 +191,23 @@ void Curl::readStart(const Napi::CallbackInfo& info) {
 }
 
 void Curl::onErrorSetter(const Napi::CallbackInfo& info, const Napi::Value& value) {
-	onError.Reset(value.As<Napi::Function>(), 1);
+	onError = Napi::Persistent(value.As<Napi::Function>());
+}
+
+void Curl::onHeaderSetter(const Napi::CallbackInfo &info, const Napi::Value &value) {
+	onHeader = Napi::Persistent(value.As<Napi::Function>());
 }
 
 void Curl::onDataSetter(const Napi::CallbackInfo& info, const Napi::Value& value) {
-	onData.Reset(value.As<Napi::Function>(), 1);
+	onData = Napi::Persistent(value.As<Napi::Function>());
 }
 
 void Curl::onReadSetter(const Napi::CallbackInfo& info, const Napi::Value& value) {
-	onRead.Reset(value.As<Napi::Function>(), 1);
+	onRead = Napi::Persistent(value.As<Napi::Function>());
+}
+
+void Curl::onEndSetter(const Napi::CallbackInfo &info, const Napi::Value &value) {
+	onEnd = Napi::Persistent(value.As<Napi::Function>());
 }
 
 void Curl::on_end() {
@@ -208,6 +216,12 @@ void Curl::on_end() {
 	Napi::HandleScope scope(env);
 
 	onEnd.MakeCallback(env.Global(), {});
+
+	onRead.Reset();
+	onHeader.Reset();
+	onData.Reset();
+	onEnd.Reset();
+	onError.Reset();
 }
 
 void Curl::on_error(CURLcode code) {
@@ -216,6 +230,12 @@ void Curl::on_error(CURLcode code) {
 	Napi::HandleScope scope(env);
 
 	onError.MakeCallback(env.Global(), { create_error(code) });
+
+	onRead.Reset();
+	onHeader.Reset();
+	onData.Reset();
+	onEnd.Reset();
+	onError.Reset();
 }
 
 Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
@@ -233,7 +253,9 @@ Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
 		InstanceMethod("readStart", &Curl::readStart),
 		InstanceAccessor("onError", nullptr, &Curl::onErrorSetter),
 		InstanceAccessor("onRead",  nullptr, &Curl::onReadSetter),
+		InstanceAccessor("onHeader", nullptr, &Curl::onHeaderSetter),
 		InstanceAccessor("onData",  nullptr, &Curl::onDataSetter),
+		InstanceAccessor("onEnd",   nullptr, &Curl::onEndSetter),
 	});
 
 	constructor = Napi::Persistent(func);
@@ -437,19 +459,19 @@ void Curl::perform(const Napi::CallbackInfo& info) {
 	Napi::Env env = info.Env();
 	Napi::HandleScope scope(env);
 
-	const auto& options = info[0].As<Napi::Object>();
+	// const auto& options = info[0].As<Napi::Object>();
 
-	for ( const std::string f: {"onError", "onHeader", "onData", "onEnd"} )
-		if ( !options[f].IsFunction() )
-			throw Napi::Error::New(env, "Curl#perform expect '" + f + "' callback function");
+	// for ( const std::string f: {"onError", "onHeader", "onData", "onEnd"} )
+	// 	if ( !options[f].IsFunction() )
+	// 		throw Napi::Error::New(env, "Curl#perform expect '" + f + "' callback function");
 
-	onData.Reset(options["onData"].As<Napi::Function>(), 1);
-	onEnd.Reset(options["onEnd"].As<Napi::Function>(), 1);
-	onError.Reset(options["onError"].As<Napi::Function>(), 1);
-	onHeader.Reset(options["onHeader"].As<Napi::Function>(), 1);
+	// onData = Napi::Persistent(options["onData"].As<Napi::Function>());
+	// onEnd = Napi::Persistent(options["onEnd"].As<Napi::Function>());
+	// onError = Napi::Persistent(options["onError"].As<Napi::Function>());
+	// onHeader = Napi::Persistent(options["onHeader"].As<Napi::Function>());
 
-	if ( options["onRead"].IsFunction() )
-		onRead.Reset(options["onRead"].As<Napi::Function>(), 1);
+	// if ( options["onRead"].IsFunction() )
+	// 	onRead.Reset(options["onRead"].As<Napi::Function>(), 1);
 
 	cancelTransfer = 0;
 	CURLMcode res = curl_multi_add_handle(multi, easy);
@@ -494,8 +516,6 @@ Napi::Value Curl::reset(const Napi::CallbackInfo& info) {
 
 	curl_easy_setopt(easy, CURLOPT_SUPPRESS_CONNECT_HEADERS, 1);
 	curl_easy_setopt(easy, CURLOPT_NOPROGRESS, 0);
-
-	onRead.Reset(Napi::Function::New(info.Env(), Curl::dummy, "dummy"), 1);
 
 	return info.This();
 }
@@ -668,6 +688,8 @@ void Curl::check_multi_info() {
 
 			curl_multi_remove_handle(multi, easy);
 			/* Do not use message data after calling curl_multi_remove_handle() */
+
+			curl_easy_setopt(easy, CURLOPT_HTTPGET, 1);
 
 			if (CURLE_OK == code) {
 				self->on_end();
