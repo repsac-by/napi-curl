@@ -216,12 +216,6 @@ void Curl::on_end() {
 	Napi::HandleScope scope(env);
 
 	onEnd.MakeCallback(env.Global(), {});
-
-	onRead.Reset();
-	onHeader.Reset();
-	onData.Reset();
-	onEnd.Reset();
-	onError.Reset();
 }
 
 void Curl::on_error(CURLcode code) {
@@ -230,12 +224,6 @@ void Curl::on_error(CURLcode code) {
 	Napi::HandleScope scope(env);
 
 	onError.MakeCallback(env.Global(), { create_error(code) });
-
-	onRead.Reset();
-	onHeader.Reset();
-	onData.Reset();
-	onEnd.Reset();
-	onError.Reset();
 }
 
 Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
