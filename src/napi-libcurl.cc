@@ -13,8 +13,6 @@
 #define LOG(fmt, ...) \
      do { fprintf(stderr, "LOG: " fmt "\n", ##__VA_ARGS__); } while (0)
 
-Napi::FunctionReference Curl::constructor;
-
 CURLM* multi;
 uv_loop_t* uv_loop;
 uv_timer_t timeout;
@@ -44,6 +42,7 @@ Napi::Value Curl::create_error(CURLcode code) {
 	DBG_LOG("Curl::create_error %d", code);
 
 	Napi::Env env = Env();
+	Napi::HandleScope scope(env);
 
 	napi_status status;
 	napi_value error;
@@ -215,6 +214,7 @@ void Curl::on_end() {
 	Napi::Env env = Env();
 	Napi::HandleScope scope(env);
 
+
 	onEnd.MakeCallback(env.Global(), {});
 }
 
@@ -246,10 +246,12 @@ Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
 		InstanceAccessor("onEnd",   nullptr, &Curl::onEndSetter),
 	});
 
-	constructor = Napi::Persistent(func);
-    constructor.SuppressDestruct();
+	Napi::FunctionReference *constructor = new Napi::FunctionReference();
+	*constructor = Napi::Persistent(func);
 
 	exports.Set("Curl", func);
+
+	env.SetInstanceData<Napi::FunctionReference>(constructor);
 
 	napi_status status;
 	status = napi_get_uv_event_loop(env, &uv_loop);
@@ -447,20 +449,6 @@ void Curl::perform(const Napi::CallbackInfo& info) {
 	Napi::Env env = info.Env();
 	Napi::HandleScope scope(env);
 
-	// const auto& options = info[0].As<Napi::Object>();
-
-	// for ( const std::string f: {"onError", "onHeader", "onData", "onEnd"} )
-	// 	if ( !options[f].IsFunction() )
-	// 		throw Napi::Error::New(env, "Curl#perform expect '" + f + "' callback function");
-
-	// onData = Napi::Persistent(options["onData"].As<Napi::Function>());
-	// onEnd = Napi::Persistent(options["onEnd"].As<Napi::Function>());
-	// onError = Napi::Persistent(options["onError"].As<Napi::Function>());
-	// onHeader = Napi::Persistent(options["onHeader"].As<Napi::Function>());
-
-	// if ( options["onRead"].IsFunction() )
-	// 	onRead.Reset(options["onRead"].As<Napi::Function>(), 1);
-
 	cancelTransfer = 0;
 	CURLMcode res = curl_multi_add_handle(multi, easy);
 
@@ -475,11 +463,15 @@ void Curl::clean() {
 	slists.clear();
 	header.clear();
 
-	onData.Reset();
-	onHeader.Reset();
-	onEnd.Reset();
-	onError.Reset();
+	cleanPersistent();
+}
+
+void Curl::cleanPersistent() {
 	onRead.Reset();
+	onHeader.Reset();
+	onError.Reset();
+	onData.Reset();
+	onEnd.Reset();
 }
 
 Napi::Value Curl::reset(const Napi::CallbackInfo& info) {
@@ -685,6 +677,8 @@ void Curl::check_multi_info() {
 			else {
 				self->on_error(code);
 			}
+
+			self->cleanPersistent();
 		}
 	}
 }

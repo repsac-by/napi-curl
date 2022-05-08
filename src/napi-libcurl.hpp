@@ -79,6 +79,7 @@ class Curl: public Napi::ObjectWrap<Curl> {
 		size_t on_data(char *ptr, size_t size, size_t nmemb);
 
 		void clean();
+		void cleanPersistent();
 };
 
 #endif  // ADDON_NAPI_6_OBJECT_WRAP_LIBCURL_H_
