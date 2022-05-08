@@ -42,7 +42,7 @@ class Curl: public Napi::ObjectWrap<Curl> {
 
 		poll_ctx_t* poll_ctx = nullptr;
 
-		std::vector<std::string> header;
+		std::vector<std::string> headers;
 
 		Napi::FunctionReference onError;
 		Napi::FunctionReference onRead;
@@ -79,7 +79,7 @@ class Curl: public Napi::ObjectWrap<Curl> {
 		size_t on_data(char *ptr, size_t size, size_t nmemb);
 
 		void clean();
-		void cleanPersistent();
+		void cleanEvents();
 };
 
 #endif  // ADDON_NAPI_6_OBJECT_WRAP_LIBCURL_H_

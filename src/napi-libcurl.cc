@@ -33,6 +33,7 @@ Curl::Curl(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Curl>(info) {
 }
 
 Curl::~Curl() {
+	//fprintf(stderr, "Curl::~Curl");
 	DBG_LOG("Curl::~Curl");
 	clean();
 	curl_easy_cleanup(easy);
@@ -61,27 +62,27 @@ std::string& rtrim(std::string& str) {
 }
 
 size_t Curl::on_header(char *ptr, size_t size, size_t nmemb) {
-	DBG_LOG("Curl::on_header");
+	DBG_LOG("Curl::on_headers");
 
 	size_t len = size * nmemb;
 
 	std::string line(ptr, len);
 
 	if ( rtrim(line).length() > 0 )
-		header.push_back(line);
+		headers.push_back(line);
 	else {
-		DBG_LOG("    Callback onHeader");
+		DBG_LOG("	onHeader");
 		Napi::Env env = Env();
 		Napi::HandleScope scope(env);
 
 		auto array = Napi::Array::New(env);
 
-		for ( const auto& line: header )
+		for ( const auto& line: headers )
 			array.Set(array.Length(), line);
 
 		onHeader.MakeCallback(env.Global(), { array });
 
-		header.clear();
+		headers.clear();
 	}
 
 	return len;
@@ -190,22 +191,27 @@ void Curl::readStart(const Napi::CallbackInfo& info) {
 }
 
 void Curl::onErrorSetter(const Napi::CallbackInfo& info, const Napi::Value& value) {
+	DBG_LOG("Curl::onErrorSetter");
 	onError = Napi::Persistent(value.As<Napi::Function>());
 }
 
 void Curl::onHeaderSetter(const Napi::CallbackInfo &info, const Napi::Value &value) {
+	DBG_LOG("Curl::onHeaderSetter");
 	onHeader = Napi::Persistent(value.As<Napi::Function>());
 }
 
 void Curl::onDataSetter(const Napi::CallbackInfo& info, const Napi::Value& value) {
+	DBG_LOG("Curl::onDataSetter");
 	onData = Napi::Persistent(value.As<Napi::Function>());
 }
 
 void Curl::onReadSetter(const Napi::CallbackInfo& info, const Napi::Value& value) {
+	DBG_LOG("Curl::onReadSetter");
 	onRead = Napi::Persistent(value.As<Napi::Function>());
 }
 
 void Curl::onEndSetter(const Napi::CallbackInfo &info, const Napi::Value &value) {
+	DBG_LOG("Curl::onEndSetter");
 	onEnd = Napi::Persistent(value.As<Napi::Function>());
 }
 
@@ -214,8 +220,11 @@ void Curl::on_end() {
 	Napi::Env env = Env();
 	Napi::HandleScope scope(env);
 
+	Napi::FunctionReference cb = Napi::Persistent(onEnd.Value());
 
-	onEnd.MakeCallback(env.Global(), {});
+	cleanEvents();
+
+	cb.MakeCallback(env.Global(), {});
 }
 
 void Curl::on_error(CURLcode code) {
@@ -223,7 +232,11 @@ void Curl::on_error(CURLcode code) {
 	Napi::Env env = Env();
 	Napi::HandleScope scope(env);
 
-	onError.MakeCallback(env.Global(), { create_error(code) });
+	Napi::FunctionReference cb = Napi::Persistent(onError.Value());
+
+	cleanEvents();
+
+	cb.MakeCallback(env.Global(), { create_error(code) });
 }
 
 Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
@@ -446,6 +459,7 @@ Napi::Value Curl::setOpt(const Napi::CallbackInfo& info) {
 }
 
 void Curl::perform(const Napi::CallbackInfo& info) {
+	DBG_LOG("Curl::perform");
 	Napi::Env env = info.Env();
 	Napi::HandleScope scope(env);
 
@@ -457,19 +471,18 @@ void Curl::perform(const Napi::CallbackInfo& info) {
 }
 
 void Curl::clean() {
+	DBG_LOG("Curl::clean");
 	for ( const auto& slist: slists )
 		curl_slist_free_all(slist.second);
 
 	slists.clear();
-	header.clear();
+	headers.clear();
 
-	cleanPersistent();
+	cleanEvents();
 }
 
-void Curl::cleanPersistent() {
-	Napi::Env env = Env();
-	Napi::HandleScope scope(env);
-
+void Curl::cleanEvents() {
+	DBG_LOG("Curl::cleanEvents");
 	onRead.Reset();
 	onHeader.Reset();
 	onError.Reset();
@@ -680,8 +693,6 @@ void Curl::check_multi_info() {
 			else {
 				self->on_error(code);
 			}
-
-			self->cleanPersistent();
 		}
 	}
 }
