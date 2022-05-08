@@ -467,6 +467,9 @@ void Curl::clean() {
 }
 
 void Curl::cleanPersistent() {
+	Napi::Env env = Env();
+	Napi::HandleScope scope(env);
+
 	onRead.Reset();
 	onHeader.Reset();
 	onError.Reset();
