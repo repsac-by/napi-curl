@@ -21,7 +21,23 @@
 					"inputs": [	"/usr/include/curl/curl.h" ],
 					"outputs": [ "src/napi-libcurl-maps.hpp" ],
 					"action": [
-						"./generate-curl-maps"
+						"sh", "-c", "util/generate-curl-maps ><@(_outputs)"
+					]
+				},
+				{
+					"action_name": "curlinfo",
+					"inputs": [	"/usr/include/curl/curl.h" ],
+					"outputs": [ "lib/curlinfo.js" ],
+					"action": [
+						"sh", "-c", "util/generate-curlinfo ><@(_outputs)"
+					]
+				},
+				{
+					"action_name": "curlopts",
+					"inputs": [	"/usr/include/curl/curl.h" ],
+					"outputs": [ "lib/curlopt.js" ],
+					"action": [
+						"sh", "-c", "g++ -lcurl util/curl_easy_options.cc -outil/curl_easy_options && util/curl_easy_options ><@(_outputs)"
 					]
 				}
 			],

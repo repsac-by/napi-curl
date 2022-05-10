@@ -33,7 +33,7 @@ Curl::Curl(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Curl>(info) {
 }
 
 Curl::~Curl() {
-	//fprintf(stderr, "Curl::~Curl");
+	// fprintf(stderr, "Curl::~Curl");
 	DBG_LOG("Curl::~Curl");
 	clean();
 	curl_easy_cleanup(easy);
@@ -425,32 +425,38 @@ Napi::Value Curl::setOpt(const Napi::CallbackInfo& info) {
 			break;
 
 		case napi_object:
-			if (CURLOT_SLIST != opt->type)
-				throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " unexpected type object");
+			if (val.IsArrayBuffer() && CURLOT_BLOB == opt->type) {
+				struct curl_blob blob;
+				blob.data = val.As<Napi::ArrayBuffer>().Data();
+				blob.len = val.As<Napi::ArrayBuffer>().ByteLength();
+				blob.flags = CURL_BLOB_COPY;
 
-			if (!val.IsArray())
-				throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " expected type array");
-			else {
+				res = curl_easy_setopt(easy, opt->id, &blob);
+			}
+			else if (val.IsArray() && CURLOT_SLIST == opt->type) {
 				const auto &a = val.As<Napi::Array>();
 				struct curl_slist *slist = nullptr;
 
-				for(uint32_t i = 0, len = a.Length(); i < len; ++i)
+				for (uint32_t i = 0, len = a.Length(); i < len; ++i)
 					slist = curl_slist_append(slist, a[i].As<Napi::String>().Utf8Value().c_str());
 
-				if ( slist ) {
+				if (slist)	{
 					res = curl_easy_setopt(easy, opt->id, slist);
 
 					const auto &it = slists.find(opt->id);
-					if ( slists.end() !=  it )
+					if (slists.end() != it)
 						curl_slist_free_all(it->second);
 
 					slists[opt->id] = slist;
 				}
 			}
+			else {
+				throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " unexpected type");
+			}
 			break;
 		default:
 			throw Napi::TypeError::New(env, "Curl#setOpt parametr restricted type");
-	}
+		}
 
 	if ( CURLE_OK != res )
 		throw Napi::TypeError::New(env, "Curl#setOpt: " + mapCURLcode.at(res));

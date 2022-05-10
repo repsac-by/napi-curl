@@ -1,4 +1,4 @@
-#!//usr/bin/node
+#!/usr/bin/node
 'use strict';
 
 const fs = require('fs');
@@ -53,8 +53,8 @@ function curlh () {
 }
 
 function createMaps ([ version, { infos, codes } ]) {
-	fs.writeFileSync('src/napi-libcurl-maps.hpp', `\
-// curl ${version}
+	process.stdout.write(`\
+// libcurl ${version}
 #include <node/node_api.h>
 #include <curl/curl.h>
 #include <map>
@@ -66,5 +66,5 @@ std::map<std::string, CURLINFO> mapCURLinfo {
 std::map<CURLcode, std::string> mapCURLcode {
 	${codes.join(',\n\t')}
 };
-`	);
+`);
 }

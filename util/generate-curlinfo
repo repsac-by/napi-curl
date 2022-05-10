@@ -1,0 +1,57 @@
+#!/usr/bin/node
+'use strict';
+
+const fs = require('fs');
+const readline = require('readline');
+const { spawnSync } = require('child_process');
+
+
+(async () => {
+	const version = curlVesrion();
+
+	await Promise.all([ version, curlh() ]).then(createMaps);
+
+})();
+
+function curlVesrion () {
+	const resp = spawnSync('pkg-config', [ '--modversion', 'libcurl' ]);
+	if (resp.error)
+		throw resp.error;
+
+	if (resp.status !== 0)
+		throw new Error('pkg-config return status:', resp.status);
+
+	return resp.stdout.toString().trim();
+}
+
+function curlh () {
+	const infos = [];
+	const infoRe = /^\s*CURLINFO_(\w+)\s*=[^C]*CURLINFO_(LONG|DOUBLE|OFF_T|STRING|SLIST)/;
+
+	return new Promise(resolve =>
+		readline.createInterface({
+			input: fs.createReadStream('/usr/include/curl/curl.h'),
+			crlfDelay: Infinity,
+		}).on('line', line => {
+
+			const i = infoRe.exec(line);
+			if (i) {
+				infos.push(`${i[1]}: '${i[1]}',`);
+				return;
+			}
+		}).on('close', () => resolve({ infos })),
+	);
+}
+
+function createMaps ([ version, { infos } ]) {
+	process.stdout.write(`\
+'use strict';
+
+// libcurl ${version}
+
+/** @enum {string} */
+module.exports.curlinfo = {
+	${infos.join('\n\t')}
+};
+`);
+}
