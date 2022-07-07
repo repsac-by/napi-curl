@@ -1,4 +1,4 @@
-// libcurl 7.83.0
+// libcurl 7.84.0
 #include <node/node_api.h>
 #include <curl/curl.h>
 #include <map>
@@ -66,7 +66,9 @@ std::map<std::string, CURLINFO> mapCURLinfo {
 	{ "RETRY_AFTER", CURLINFO_RETRY_AFTER },
 	{ "EFFECTIVE_METHOD", CURLINFO_EFFECTIVE_METHOD },
 	{ "PROXY_ERROR", CURLINFO_PROXY_ERROR },
-	{ "REFERER", CURLINFO_REFERER }
+	{ "REFERER", CURLINFO_REFERER },
+	{ "CAINFO", CURLINFO_CAINFO },
+	{ "CAPATH", CURLINFO_CAPATH }
 };
 
 std::map<CURLcode, std::string> mapCURLcode {
@@ -167,5 +169,6 @@ std::map<CURLcode, std::string> mapCURLcode {
 	{ CURLE_HTTP3, "CURLE_HTTP3" },
 	{ CURLE_QUIC_CONNECT_ERROR, "CURLE_QUIC_CONNECT_ERROR" },
 	{ CURLE_PROXY, "CURLE_PROXY" },
-	{ CURLE_SSL_CLIENTCERT, "CURLE_SSL_CLIENTCERT" }
+	{ CURLE_SSL_CLIENTCERT, "CURLE_SSL_CLIENTCERT" },
+	{ CURLE_UNRECOVERABLE_POLL, "CURLE_UNRECOVERABLE_POLL" }
 };

@@ -1,10 +1,9 @@
 #!/usr/bin/node
 'use strict';
 
-const fs = require('fs');
-const readline = require('readline');
-const { spawnSync } = require('child_process');
-
+const { createReadStream } = require('node:fs');
+const readline = require('node:readline');
+const { spawnSync } = require('node:child_process');
 
 (async () => {
 	const version = curlVesrion();
@@ -14,14 +13,14 @@ const { spawnSync } = require('child_process');
 })();
 
 function curlVesrion () {
-	const resp = spawnSync('pkg-config', [ '--modversion', 'libcurl' ]);
-	if (resp.error)
-		throw resp.error;
+	const { error, status, stdout } = spawnSync('pkg-config', [ '--modversion', 'libcurl' ]);
+	if (error)
+		throw error;
 
-	if (resp.status !== 0)
-		throw new Error('pkg-config return status:', resp.status);
+	if (status !== 0)
+		throw new Error(`pkg-config return status: ${status}`);
 
-	return resp.stdout.toString().trim();
+	return stdout.toString().trim();
 }
 
 function curlh () {
@@ -30,7 +29,7 @@ function curlh () {
 
 	return new Promise(resolve =>
 		readline.createInterface({
-			input: fs.createReadStream('/usr/include/curl/curl.h'),
+			input: createReadStream('/usr/include/curl/curl.h'),
 			crlfDelay: Infinity,
 		}).on('line', line => {
 

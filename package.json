@@ -7,7 +7,7 @@
   "license": "MIT",
   "private": true,
   "engines": {
-    "node": ">=8.3.0"
+    "node": ">=17.5.0"
   },
   "dependencies": {
     "node-addon-api": "^5.0.0"

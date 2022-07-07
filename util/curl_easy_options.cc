@@ -18,7 +18,7 @@ const char* jstypes(curl_easytype type) {
 		// case CURLOT_CBPTR:    /*         (void * passed as-is to a callback) */
 		// 	return "CBPTR";
 		case CURLOT_BLOB:     /* blob (struct curl_blob *) */
-			return "ArrayBuffer";
+			return "Uint8Array";
 		// case CURLOT_FUNCTION: /* function pointer */
 		// 	return "FUNCTION";
 

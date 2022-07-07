@@ -33,26 +33,9 @@ Curl::Curl(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Curl>(info) {
 }
 
 Curl::~Curl() {
-	// fprintf(stderr, "Curl::~Curl");
 	DBG_LOG("Curl::~Curl");
 	clean();
 	curl_easy_cleanup(easy);
-}
-
-Napi::Value Curl::create_error(CURLcode code) {
-	DBG_LOG("Curl::create_error %d", code);
-
-	Napi::Env env = Env();
-	Napi::HandleScope scope(env);
-
-	napi_status status;
-	napi_value error;
-
-	status = napi_create_error(env, Napi::String::New(env, mapCURLcode.at(code)), Napi::String::New(env, errorbuffer), &error);
-	if ( napi_ok != status )
-		throw std::runtime_error(errorbuffer);
-
-	return Napi::Value(env, error);
 }
 
 std::string& rtrim(std::string& str) {
@@ -62,7 +45,7 @@ std::string& rtrim(std::string& str) {
 }
 
 size_t Curl::on_header(char *ptr, size_t size, size_t nmemb) {
-	DBG_LOG("Curl::on_headers");
+	DBG_LOG("Curl::on_header");
 
 	size_t len = size * nmemb;
 
@@ -71,7 +54,7 @@ size_t Curl::on_header(char *ptr, size_t size, size_t nmemb) {
 	if ( rtrim(line).length() > 0 )
 		headers.push_back(line);
 	else {
-		DBG_LOG("	onHeader");
+		DBG_LOG("	onHeaders");
 		Napi::Env env = Env();
 		Napi::HandleScope scope(env);
 
@@ -80,7 +63,7 @@ size_t Curl::on_header(char *ptr, size_t size, size_t nmemb) {
 		for ( const auto& line: headers )
 			array.Set(array.Length(), line);
 
-		onHeader.MakeCallback(env.Global(), { array });
+		onHeaders.MakeCallback(env.Global(), { array });
 
 		headers.clear();
 	}
@@ -92,6 +75,9 @@ size_t Curl::on_read(char *buffer, size_t size, size_t nitems) {
 	DBG_LOG("Curl::read_callback");
 	DBG_LOG("    size: %zu", size);
 	DBG_LOG("    nitems: %zu", nitems);
+
+	// if (cancelTransfer)
+	// 	return CURL_READFUNC_ABORT;
 
 	Napi::Env env = Env();
 	Napi::HandleScope scope(env);
@@ -105,19 +91,20 @@ size_t Curl::on_read(char *buffer, size_t size, size_t nitems) {
 	if (ret.IsNull())
 		return 0;
 
-	if (ret.IsArrayBuffer()) {
-		auto in = ret.As<Napi::ArrayBuffer>();
+	if (ret.IsTypedArray()) {
+		auto in = ret.As<Napi::Uint8Array>();
 
 		DBG_LOG("    read bytes: %zu", in.ByteLength());
 
-		if (0 == in.ByteLength())
-			return CURL_READFUNC_PAUSE;
+		if (in.ByteLength() > 0) {
+			memcpy(buffer, in.Data(), in.ByteLength());
+			return in.ByteLength();
+		}
 
-		memcpy(buffer, in.Data(), in.ByteLength());
-		return in.ByteLength();
+		return CURL_READFUNC_PAUSE;
 	}
 
-	throw Napi::TypeError::New(env, "onRead: must retrun ArrayBuffer on null");
+	throw Napi::TypeError::New(env, "onRead: must retrun TypedArray or null");
 }
 
 size_t Curl::on_data(char* ptr, size_t size, size_t nmemb) {
@@ -195,9 +182,9 @@ void Curl::onErrorSetter(const Napi::CallbackInfo& info, const Napi::Value& valu
 	onError = Napi::Persistent(value.As<Napi::Function>());
 }
 
-void Curl::onHeaderSetter(const Napi::CallbackInfo &info, const Napi::Value &value) {
-	DBG_LOG("Curl::onHeaderSetter");
-	onHeader = Napi::Persistent(value.As<Napi::Function>());
+void Curl::onHeadersSetter(const Napi::CallbackInfo &info, const Napi::Value &value) {
+	DBG_LOG("Curl::onHeadersSetter");
+	onHeaders = Napi::Persistent(value.As<Napi::Function>());
 }
 
 void Curl::onDataSetter(const Napi::CallbackInfo& info, const Napi::Value& value) {
@@ -236,7 +223,7 @@ void Curl::on_error(CURLcode code) {
 
 	cleanEvents();
 
-	cb.MakeCallback(env.Global(), { create_error(code) });
+	cb.MakeCallback(env.Global(), { Napi::Error::New(env, mapCURLcode.at(code)).Value() });
 }
 
 Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
@@ -254,7 +241,7 @@ Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
 		InstanceMethod("readStart", &Curl::readStart),
 		InstanceAccessor("onError", nullptr, &Curl::onErrorSetter),
 		InstanceAccessor("onRead",  nullptr, &Curl::onReadSetter),
-		InstanceAccessor("onHeader", nullptr, &Curl::onHeaderSetter),
+		InstanceAccessor("onHeaders", nullptr, &Curl::onHeadersSetter),
 		InstanceAccessor("onData",  nullptr, &Curl::onDataSetter),
 		InstanceAccessor("onEnd",   nullptr, &Curl::onEndSetter),
 	});
@@ -395,11 +382,13 @@ Napi::Value Curl::setOpt(const Napi::CallbackInfo& info) {
 			break;
 
 		case napi_string:
-			if (CURLOT_STRING != opt->type &&
-				CURLOPT_COPYPOSTFIELDS != opt->id
-			) throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " unexpected type string");
+			if (CURLOT_STRING == opt->type )
+				res = curl_easy_setopt(easy, opt->id, val.As<Napi::String>().Utf8Value().c_str());
+			else if (CURLOPT_COPYPOSTFIELDS == opt->id)
+				res = curl_easy_setopt(easy, opt->id, val.As<Napi::String>().Utf8Value().data());
+			else
+				throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " unexpected type string");
 
-			res = curl_easy_setopt(easy, opt->id, val.As<Napi::String>().Utf8Value().c_str());
 			break;
 
 		case napi_boolean:
@@ -425,10 +414,10 @@ Napi::Value Curl::setOpt(const Napi::CallbackInfo& info) {
 			break;
 
 		case napi_object:
-			if (val.IsArrayBuffer() && CURLOT_BLOB == opt->type) {
+			if (val.IsTypedArray() && CURLOT_BLOB == opt->type) {
 				struct curl_blob blob;
-				blob.data = val.As<Napi::ArrayBuffer>().Data();
-				blob.len = val.As<Napi::ArrayBuffer>().ByteLength();
+				blob.data = val.As<Napi::Uint8Array>().Data();
+				blob.len = val.As<Napi::Uint8Array>().ByteLength();
 				blob.flags = CURL_BLOB_COPY;
 
 				res = curl_easy_setopt(easy, opt->id, &blob);
@@ -490,7 +479,7 @@ void Curl::clean() {
 void Curl::cleanEvents() {
 	DBG_LOG("Curl::cleanEvents");
 	onRead.Reset();
-	onHeader.Reset();
+	onHeaders.Reset();
 	onError.Reset();
 	onData.Reset();
 	onEnd.Reset();
