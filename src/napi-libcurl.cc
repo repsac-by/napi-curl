@@ -76,8 +76,8 @@ size_t Curl::on_read(char *buffer, size_t size, size_t nitems) {
 	DBG_LOG("    size: %zu", size);
 	DBG_LOG("    nitems: %zu", nitems);
 
-	// if (cancelTransfer)
-	// 	return CURL_READFUNC_ABORT;
+	if (cancelTransfer)
+		return CURL_READFUNC_ABORT;
 
 	Napi::Env env = Env();
 	Napi::HandleScope scope(env);
@@ -127,6 +127,8 @@ size_t Curl::on_data(char* ptr, size_t size, size_t nmemb) {
 void Curl::cancel(const Napi::CallbackInfo& info) {
 	DBG_LOG("Curl::cancel");
 	cancelTransfer = 1;
+
+	curl_easy_pause(easy, CURLPAUSE_CONT);
 	Curl::check_multi_info();
 }
 

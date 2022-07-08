@@ -2,15 +2,17 @@
 #include <curl/curl.h>
 #include <curl/options.h>
 
-const char* jstypes(curl_easytype type) {
-	switch (type)
+const char* jstypes(const curl_easyoption *opt) {
+	switch (opt->type)
 	{
 		case CURLOT_LONG:     /* long (a range of values) */
 		case CURLOT_VALUES:   /*      (a defined set or bitmask) */
 		case CURLOT_OFF_T:    /* curl_off_t (a range of values) */
 			return "number|bigint";
-		// case CURLOT_OBJECT:   /* pointer (void *) */
-		// 	return "OBJECT";
+		case CURLOT_OBJECT:   /* pointer (void *) */
+			if (opt->id == CURLOPT_COPYPOSTFIELDS || opt->id == CURLOPT_POSTFIELDS)
+				return "string";
+			return NULL;
 		case CURLOT_STRING:   /*         (char * to zero terminated buffer) */
 			return "string";
 		case CURLOT_SLIST:    /*         (struct curl_slist *) */
@@ -43,7 +45,7 @@ int main(int argc, char *argv[])
 	opt = curl_easy_option_next(NULL);
 	while (opt)
 	{
-		const char * jstype = jstypes(opt->type);
+		const char * jstype = jstypes(opt);
 		if (jstype)
 			printf("* @prop {%s} [%s]\n", jstype, opt->name);
 		opt = curl_easy_option_next(opt);
