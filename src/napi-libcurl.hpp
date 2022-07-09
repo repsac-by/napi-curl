@@ -49,6 +49,7 @@ class Curl: public Napi::ObjectWrap<Curl> {
 		Napi::FunctionReference onHeaders;
 		Napi::FunctionReference onData;
 		Napi::FunctionReference onEnd;
+		Napi::FunctionReference onClose;
 
 		std::map<CURLoption, struct curl_slist*> slists;
 
@@ -68,9 +69,11 @@ class Curl: public Napi::ObjectWrap<Curl> {
 		void onHeadersSetter(const Napi::CallbackInfo &info, const Napi::Value &value);
 		void onDataSetter(const Napi::CallbackInfo& info, const Napi::Value& value);
 		void onEndSetter(const Napi::CallbackInfo &info, const Napi::Value &value);
+		void onCloseSetter(const Napi::CallbackInfo &info, const Napi::Value &value);
 
 		int cancelTransfer = 0;
 		void on_end();
+		void on_close();
 		void on_error(CURLcode code);
 		size_t on_header(char *ptr, size_t size, size_t nmemb);
 		size_t on_read(char *buffer, size_t size, size_t nitems);

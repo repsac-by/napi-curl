@@ -204,16 +204,36 @@ void Curl::onEndSetter(const Napi::CallbackInfo &info, const Napi::Value &value)
 	onEnd = Napi::Persistent(value.As<Napi::Function>());
 }
 
+void Curl::onCloseSetter(const Napi::CallbackInfo &info, const Napi::Value &value)
+{
+	DBG_LOG("Curl::onCloseSetter");
+	onClose = Napi::Persistent(value.As<Napi::Function>());
+}
+
 void Curl::on_end() {
 	DBG_LOG("Curl::on_end");
 	Napi::Env env = Env();
 	Napi::HandleScope scope(env);
 
-	Napi::FunctionReference cb = Napi::Persistent(onEnd.Value());
+	if (onEnd.IsEmpty()) return;
 
-	cleanEvents();
+	//auto cb = Napi::Persistent(onEnd.Value());
 
-	cb.MakeCallback(env.Global(), {});
+	onEnd.Value().MakeCallback(env.Global(), {});
+}
+
+void Curl::on_close() {
+	DBG_LOG("Curl::on_close");
+	Napi::Env env = Env();
+	Napi::HandleScope scope(env);
+
+	// auto cb = Napi::Persistent(onClose.Value());
+
+	// cleanEvents();
+
+	if (onClose.IsEmpty())	return;
+
+	onClose.MakeCallback(env.Global(), {});
 }
 
 void Curl::on_error(CURLcode code) {
@@ -221,11 +241,9 @@ void Curl::on_error(CURLcode code) {
 	Napi::Env env = Env();
 	Napi::HandleScope scope(env);
 
-	Napi::FunctionReference cb = Napi::Persistent(onError.Value());
+	if (onError.IsEmpty()) return;
 
-	cleanEvents();
-
-	cb.MakeCallback(env.Global(), { Napi::Error::New(env, mapCURLcode.at(code)).Value() });
+	onError.MakeCallback(env.Global(), { Napi::Error::New(env, mapCURLcode.at(code)).Value() });
 }
 
 Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
@@ -246,6 +264,7 @@ Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
 		InstanceAccessor("onHeaders", nullptr, &Curl::onHeadersSetter),
 		InstanceAccessor("onData",  nullptr, &Curl::onDataSetter),
 		InstanceAccessor("onEnd",   nullptr, &Curl::onEndSetter),
+		InstanceAccessor("onClose", nullptr, &Curl::onCloseSetter),
 	});
 
 	Napi::FunctionReference *constructor = new Napi::FunctionReference();
@@ -475,7 +494,7 @@ void Curl::clean() {
 	slists.clear();
 	headers.clear();
 
-	cleanEvents();
+	//cleanEvents();
 }
 
 void Curl::cleanEvents() {
@@ -485,6 +504,7 @@ void Curl::cleanEvents() {
 	onError.Reset();
 	onData.Reset();
 	onEnd.Reset();
+	onClose.Reset();
 }
 
 Napi::Value Curl::reset(const Napi::CallbackInfo& info) {
@@ -552,7 +572,7 @@ int Curl::progress_callback(void *userdata, curl_off_t dltotal, curl_off_t dlnow
 }
 
 poll_ctx_t* Curl::create_poll_context(const curl_socket_t& sockfd, CURL* easy) {
-	DBG_LOG("create_multi_context");
+	DBG_LOG("Curl::create_multi_context");
 
 	Curl* self;
 	curl_easy_getinfo(easy, CURLINFO_PRIVATE, &self);
@@ -579,6 +599,8 @@ void Curl::poll_close_cb(uv_handle_t* handle) {
 	auto self = static_cast<Curl*>(ctx->userp);
 
 	self->poll_ctx = nullptr;
+
+	self->on_close();
 
 	delete ctx;
 }
