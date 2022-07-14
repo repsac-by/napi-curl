@@ -8,10 +8,10 @@ const char* jstypes(const curl_easyoption *opt) {
 		case CURLOT_LONG:     /* long (a range of values) */
 		case CURLOT_VALUES:   /*      (a defined set or bitmask) */
 		case CURLOT_OFF_T:    /* curl_off_t (a range of values) */
-			return "number|bigint";
+			return "number | bigint";
 		case CURLOT_OBJECT:   /* pointer (void *) */
 			if (opt->id == CURLOPT_COPYPOSTFIELDS || opt->id == CURLOPT_POSTFIELDS)
-				return "string";
+				return "Uint8Array | string";
 			return NULL;
 		case CURLOT_STRING:   /*         (char * to zero terminated buffer) */
 			return "string";

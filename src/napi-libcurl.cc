@@ -18,8 +18,7 @@ uv_loop_t* uv_loop;
 uv_timer_t timeout;
 
 Curl::Curl(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Curl>(info) {
-	Napi::Env env = info.Env();
-	Napi::HandleScope scope(env);
+	const auto &env = info.Env();
 
 	if ( ! info.IsConstructCall() )
 		throw Napi::Error::New(env,  "create instance with new");
@@ -55,10 +54,10 @@ size_t Curl::on_header(char *ptr, size_t size, size_t nmemb) {
 		headers.push_back(line);
 	else {
 		DBG_LOG("	onHeaders");
-		Napi::Env env = Env();
+		const auto &env = Env();
 		Napi::HandleScope scope(env);
 
-		auto array = Napi::Array::New(env);
+		const auto &array = Napi::Array::New(env);
 
 		for ( const auto& line: headers )
 			array.Set(array.Length(), line);
@@ -79,12 +78,12 @@ size_t Curl::on_read(char *buffer, size_t size, size_t nitems) {
 	if (cancelTransfer)
 		return CURL_READFUNC_ABORT;
 
-	Napi::Env env = Env();
+	const auto &env = Env();
 	Napi::HandleScope scope(env);
 
 	size_t len = size * nitems;
 
-	auto ret = onRead.MakeCallback(env.Global(), {
+	const auto &ret = onRead.MakeCallback(env.Global(), {
 		Napi::Number::New(env, len)
 	});
 
@@ -92,7 +91,7 @@ size_t Curl::on_read(char *buffer, size_t size, size_t nitems) {
 		return 0;
 
 	if (ret.IsTypedArray()) {
-		auto in = ret.As<Napi::Uint8Array>();
+		const auto in = ret.As<Napi::Uint8Array>();
 
 		DBG_LOG("    read bytes: %zu", in.ByteLength());
 
@@ -114,7 +113,7 @@ size_t Curl::on_data(char* ptr, size_t size, size_t nmemb) {
 
 	size_t len = size * nmemb;
 
-	Napi::Env env = Env();
+	const auto &env = Env();
 	Napi::HandleScope scope(env);
 
 	onData.MakeCallback(env.Global(), {
@@ -134,8 +133,7 @@ void Curl::cancel(const Napi::CallbackInfo& info) {
 
 void Curl::pause(const Napi::CallbackInfo& info) {
 	DBG_LOG("Curl::pause");
-	Napi::Env env = Env();
-	Napi::HandleScope scope(env);
+	const auto &env = Env();
 
 	CURLcode res = curl_easy_pause(easy, CURLPAUSE_ALL);
 
@@ -145,24 +143,24 @@ void Curl::pause(const Napi::CallbackInfo& info) {
 
 void Curl::resume(const Napi::CallbackInfo& info) {
 	DBG_LOG("Curl::resume");
-	Napi::Env env = Env();
-	Napi::HandleScope scope(env);
 
 	CURLcode res = curl_easy_pause(easy, CURLPAUSE_CONT);
 
-	if (CURLE_OK != res)
+	if (CURLE_OK != res) {
+		const auto &env = Env();
 		throw Napi::TypeError::New(env, "Curl#resume: " + mapCURLcode.at(res));
+	}
 }
 
 void Curl::upkeep(const Napi::CallbackInfo &info) {
 	DBG_LOG("Curl::upkeep");
-	Napi::Env env = Env();
-	Napi::HandleScope scope(env);
 
 	CURLcode res = curl_easy_upkeep(easy);
 
-	if (CURLE_OK != res)
+	if (CURLE_OK != res) {
+		const auto &env = Env();
 		throw Napi::TypeError::New(env, "Curl#upkeep: " + mapCURLcode.at(res));
+	}
 }
 
 void Curl::readStop(const Napi::CallbackInfo& info) {
@@ -212,36 +210,33 @@ void Curl::onCloseSetter(const Napi::CallbackInfo &info, const Napi::Value &valu
 
 void Curl::on_end() {
 	DBG_LOG("Curl::on_end");
-	Napi::Env env = Env();
-	Napi::HandleScope scope(env);
 
 	if (onEnd.IsEmpty()) return;
 
-	//auto cb = Napi::Persistent(onEnd.Value());
+	const auto &env = Env();
+	Napi::HandleScope scope(env);
 
 	onEnd.Value().MakeCallback(env.Global(), {});
 }
 
 void Curl::on_close() {
 	DBG_LOG("Curl::on_close");
-	Napi::Env env = Env();
-	Napi::HandleScope scope(env);
-
-	// auto cb = Napi::Persistent(onClose.Value());
-
-	// cleanEvents();
 
 	if (onClose.IsEmpty())	return;
+
+	const auto &env = Env();
+	Napi::HandleScope scope(env);
 
 	onClose.MakeCallback(env.Global(), {});
 }
 
 void Curl::on_error(CURLcode code) {
 	DBG_LOG("Curl::on_error");
-	Napi::Env env = Env();
-	Napi::HandleScope scope(env);
 
 	if (onError.IsEmpty()) return;
+
+	const auto &env = Env();
+	Napi::HandleScope scope(env);
 
 	onError.MakeCallback(env.Global(), { Napi::Error::New(env, mapCURLcode.at(code)).Value() });
 }
@@ -290,18 +285,17 @@ Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
 }
 
 void Curl::dummy(const Napi::CallbackInfo& info) {
-	Napi::Env env = info.Env();
-	Napi::HandleScope scope(env);
+	const auto &env = info.Env();
+
 
 	throw Napi::Error::New(env, "Need callback function");
 }
 
 Napi::Value Curl::getInfo(const Napi::CallbackInfo& info) {
-	Napi::Env env = info.Env();
-	Napi::HandleScope scope(env);
+	const auto &env = info.Env();
 
-	const std::string& arg = info[0].As<Napi::String>();
-	const auto& it = mapCURLinfo.find(arg);
+	const auto &arg = info[0].As<Napi::String>().Utf8Value();
+	const auto &it = mapCURLinfo.find(arg);
 
 	if ( it == mapCURLinfo.end() )
 		throw Napi::TypeError::New(env, "Curl#getInfo not found key: " + arg);
@@ -376,20 +370,19 @@ Napi::Value Curl::getInfo(const Napi::CallbackInfo& info) {
 }
 
 Napi::Value Curl::setOpt(const Napi::CallbackInfo& info) {
-	Napi::Env env = info.Env();
-	Napi::HandleScope scope(env);
+	const auto &env = info.Env();
 
 	if ( 2 < info.Length() )
 		throw Napi::TypeError::New(env, "Curl#setOpt 2 args expected");
 
-	const std::string& opt_key = info[0].As<Napi::String>();
-	const Napi::Value& val = info[1];
+	const auto &opt_key = info[0].As<Napi::String>().Utf8Value();
+	const auto &val = info[1];
 
 	const struct curl_easyoption *opt = curl_easy_option_by_name(opt_key.c_str());
 	if (!opt)
 		throw Napi::TypeError::New(env, "Curl#setOpt unknown option: " + opt_key);
 
-	CURLcode   res = CURLE_UNKNOWN_OPTION;
+	CURLcode res = CURLE_UNKNOWN_OPTION;
 
 	switch ( val.Type() ) {
 		case napi_null:
@@ -406,7 +399,12 @@ Napi::Value Curl::setOpt(const Napi::CallbackInfo& info) {
 			if (CURLOT_STRING == opt->type )
 				res = curl_easy_setopt(easy, opt->id, val.As<Napi::String>().Utf8Value().c_str());
 			else if (CURLOPT_COPYPOSTFIELDS == opt->id)
-				res = curl_easy_setopt(easy, opt->id, val.As<Napi::String>().Utf8Value().data());
+			{
+				const auto &body = val.As<Napi::String>().Utf8Value();
+				res = curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, body.length());
+				if (CURLE_OK == res)
+					res = curl_easy_setopt(easy, opt->id, body.data());
+			}
 			else
 				throw Napi::TypeError::New(env, "Curl#setOpt " + opt_key + " unexpected type string");
 
@@ -435,7 +433,8 @@ Napi::Value Curl::setOpt(const Napi::CallbackInfo& info) {
 			break;
 
 		case napi_object:
-			if (val.IsTypedArray() && CURLOT_BLOB == opt->type) {
+			if (val.IsTypedArray() && CURLOT_BLOB == opt->type)
+			{
 				struct curl_blob blob;
 				blob.data = val.As<Napi::Uint8Array>().Data();
 				blob.len = val.As<Napi::Uint8Array>().ByteLength();
@@ -443,7 +442,14 @@ Napi::Value Curl::setOpt(const Napi::CallbackInfo& info) {
 
 				res = curl_easy_setopt(easy, opt->id, &blob);
 			}
-			else if (val.IsArray() && CURLOT_SLIST == opt->type) {
+			else if (CURLOPT_COPYPOSTFIELDS == opt->id || CURLOPT_POSTFIELDS == opt->id)
+			{
+				res = curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE, val.As<Napi::Uint8Array>().ByteLength());
+				if (CURLE_OK == res)
+					res = curl_easy_setopt(easy, opt->id, val.As<Napi::Uint8Array>().Data());
+			}
+			else if (val.IsArray() && CURLOT_SLIST == opt->type)
+			{
 				const auto &a = val.As<Napi::Array>();
 				struct curl_slist *slist = nullptr;
 
@@ -476,8 +482,7 @@ Napi::Value Curl::setOpt(const Napi::CallbackInfo& info) {
 
 void Curl::perform(const Napi::CallbackInfo& info) {
 	DBG_LOG("Curl::perform");
-	Napi::Env env = info.Env();
-	Napi::HandleScope scope(env);
+	const auto &env = info.Env();
 
 	cancelTransfer = 0;
 	CURLMcode res = curl_multi_add_handle(multi, easy);
@@ -577,7 +582,7 @@ poll_ctx_t* Curl::create_poll_context(const curl_socket_t& sockfd, CURL* easy) {
 	Curl* self;
 	curl_easy_getinfo(easy, CURLINFO_PRIVATE, &self);
 
-	auto ctx = new poll_ctx_t;
+	const auto ctx = new poll_ctx_t;
 
 	uv_poll_init_socket(uv_loop, &ctx->handle, sockfd);
 
@@ -595,8 +600,8 @@ poll_ctx_t* Curl::create_poll_context(const curl_socket_t& sockfd, CURL* easy) {
 void Curl::poll_close_cb(uv_handle_t* handle) {
 	DBG_LOG("Curl::poll_close_cb");
 
-	auto ctx = static_cast<poll_ctx_t*>(handle->data);
-	auto self = static_cast<Curl*>(ctx->userp);
+	const auto ctx = static_cast<poll_ctx_t*>(handle->data);
+	const auto self = static_cast<Curl*>(ctx->userp);
 
 	self->poll_ctx = nullptr;
 
@@ -616,7 +621,7 @@ void Curl::curl_poll_cb(uv_poll_t* req, int status, int events) {
 	DBG_LOG("    status: %i", status);
 	DBG_LOG("    events: %i", events);
 
-	auto ctx = static_cast<poll_ctx_t*>(req->data);
+	const auto ctx = static_cast<poll_ctx_t*>(req->data);
 
 	int running_handles;
 	int flags = 0;
@@ -628,7 +633,7 @@ void Curl::curl_poll_cb(uv_poll_t* req, int status, int events) {
 	if (events & UV_WRITABLE)
 		flags |= CURL_CSELECT_OUT;
 
-	CURLMcode code = curl_multi_socket_action(multi, ctx->sock, flags, &running_handles);
+	auto code = curl_multi_socket_action(multi, ctx->sock, flags, &running_handles);
 	if (code != CURLM_OK)
 		throw std::runtime_error(curl_multi_strerror(code));
 
