@@ -35,7 +35,7 @@ function curlh () {
 
 			const i = infoRe.exec(line);
 			if (i) {
-				infos.push(`${i[1]}: '${i[1]}',`);
+				infos.push(i[1]);
 				return;
 			}
 		}).on('close', () => resolve({ infos })),
@@ -48,9 +48,13 @@ function createMaps ([ version, { infos } ]) {
 
 // libcurl ${version}
 
+/**
+ * @typedef {${infos.map(i => `'${i}'`).join('|')}} Curlinfo
+ */
+
 /** @enum {string} */
 module.exports.curlinfo = {
-	${infos.join('\n\t')}
+	${infos.map(i => `${i}: '${i}',`).join('\n\t')}
 };
 `);
 }

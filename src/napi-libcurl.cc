@@ -1,6 +1,5 @@
 #include <cassert>
 #include <string>
-#include <stdexcept>
 #include "napi-libcurl.hpp"
 #include "napi-libcurl-maps.hpp"
 
@@ -62,7 +61,11 @@ size_t Curl::on_header(char *ptr, size_t size, size_t nmemb) {
 		for ( const auto& line: headers )
 			array.Set(array.Length(), line);
 
-		onHeaders.MakeCallback(env.Global(), { array });
+		try	{
+			onHeaders.MakeCallback(env.Global(), {array});
+		} catch (const Napi::Error &e) {
+			onError.MakeCallback(env.Global(), { e.Value() });
+		}
 
 		headers.clear();
 	}
@@ -282,13 +285,6 @@ Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
 	curl_multi_setopt(multi, CURLMOPT_TIMERFUNCTION,  Curl::start_timeout);
 
 	return exports;
-}
-
-void Curl::dummy(const Napi::CallbackInfo& info) {
-	const auto &env = info.Env();
-
-
-	throw Napi::Error::New(env, "Need callback function");
 }
 
 Napi::Value Curl::getInfo(const Napi::CallbackInfo& info) {
