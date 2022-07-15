@@ -3,15 +3,6 @@
 #include "napi-libcurl.hpp"
 #include "napi-libcurl-maps.hpp"
 
-#if defined(DEBUG)
-#  define DBG_LOG(fmt, ...) \
-     do { fprintf(stderr, "DEBUG: " fmt "\n", ##__VA_ARGS__); } while (0)
-#else
-#  define DBG_LOG(fmt, ...) (void(0))
-#endif
-#define LOG(fmt, ...) \
-     do { fprintf(stderr, "LOG: " fmt "\n", ##__VA_ARGS__); } while (0)
-
 CURLM* multi;
 uv_loop_t* uv_loop;
 uv_timer_t timeout;
@@ -36,27 +27,21 @@ Curl::~Curl() {
 	curl_easy_cleanup(easy);
 }
 
-std::string& rtrim(std::string& str) {
-	const std::string& chars = "\n\r\t\v\f ";
-	str.erase(str.find_last_not_of(chars) + 1);
-	return str;
-}
-
 size_t Curl::on_header(char *ptr, size_t size, size_t nmemb) {
 	DBG_LOG("Curl::on_header");
 
 	size_t len = size * nmemb;
 
-	std::string line(ptr, len);
+	const auto line = rtrim(std::string(ptr, len));
 
-	if ( rtrim(line).length() > 0 )
+	if ( line.length() > 0 )
 		headers.push_back(line);
 	else {
 		DBG_LOG("	onHeaders");
 		const auto &env = Env();
 		Napi::HandleScope scope(env);
 
-		const auto &array = Napi::Array::New(env);
+		const auto array = Napi::Array::New(env);
 
 		for ( const auto& line: headers )
 			array.Set(array.Length(), line);
@@ -205,8 +190,7 @@ void Curl::onEndSetter(const Napi::CallbackInfo &info, const Napi::Value &value)
 	onEnd = Napi::Persistent(value.As<Napi::Function>());
 }
 
-void Curl::onCloseSetter(const Napi::CallbackInfo &info, const Napi::Value &value)
-{
+void Curl::onCloseSetter(const Napi::CallbackInfo &info, const Napi::Value &value) {
 	DBG_LOG("Curl::onCloseSetter");
 	onClose = Napi::Persistent(value.As<Napi::Function>());
 }
@@ -272,8 +256,7 @@ Napi::Object Curl::Init(Napi::Env env, Napi::Object exports) {
 
 	env.SetInstanceData<Napi::FunctionReference>(constructor);
 
-	napi_status status;
-	status = napi_get_uv_event_loop(env, &uv_loop);
+	auto status = napi_get_uv_event_loop(env, &uv_loop);
 	assert(status == napi_ok);
 
 	uv_timer_init(uv_loop, &timeout);
@@ -349,7 +332,7 @@ Napi::Value Curl::getInfo(const Napi::CallbackInfo& info) {
 			if (CURLE_OK != res)
 				throw Napi::TypeError::New(env, "Curl#getInfo: " + mapCURLcode.at(res));
 
-			const auto &array = Napi::Array::New(env);
+			const auto array = Napi::Array::New(env);
 
 			struct curl_slist *each = slist;
 			uint32_t i = 0;
@@ -494,8 +477,6 @@ void Curl::clean() {
 
 	slists.clear();
 	headers.clear();
-
-	//cleanEvents();
 }
 
 void Curl::cleanEvents() {
@@ -513,6 +494,7 @@ Napi::Value Curl::reset(const Napi::CallbackInfo& info) {
 
 	curl_easy_reset(easy);
 
+	cleanEvents();
 	this->clean();
 
 	curl_easy_setopt(easy, CURLOPT_PRIVATE,    this);

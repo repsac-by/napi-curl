@@ -8,12 +8,24 @@
 #include <vector>
 #include <map>
 
+#if defined(DEBUG)
+#  define DBG_LOG(fmt, ...) \
+     do { fprintf(stderr, "DEBUG: " fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+#  define DBG_LOG(fmt, ...) (void(0))
+#endif
+
 struct poll_ctx_t {
 	uv_poll_t handle;
 	curl_socket_t sock;
 	void* userp;
 	int events = 0;
 };
+
+static inline std::string rtrim(const std::string &str) {
+	const auto &chars = std::string("\n\r\t\v\f ");
+	return std::string(str.data(), str.find_last_not_of(chars) + 1);
+}
 
 class Curl: public Napi::ObjectWrap<Curl> {
 	public:

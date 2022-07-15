@@ -5,3 +5,5 @@ setopts/
 test/
 compile_commands.json
 example.js
+test.js
+test.*.js
