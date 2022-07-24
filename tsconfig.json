@@ -1,6 +1,6 @@
 {
 	"compilerOptions": {
-		"module": "NodeNext",
+		"target": "ES2020",
 		"allowJs": true,
 		"checkJs": true,
 		"strict": true,
@@ -9,6 +9,12 @@
 			"DOM.Iterable",
 			"ESNext",
 		],
-		"noEmit": true,
-	}
+		"outDir": "./types"
+	},
+	"exclude": [
+		"example.js",
+		"test.js",
+		"test.*.js",
+		"test/**",
+	]
 }
