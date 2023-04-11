@@ -566,13 +566,13 @@ poll_ctx_t* Curl::create_poll_context(const curl_socket_t& sockfd, CURL* easy) {
 	socklen_t optlen = sizeof(optval);
 
 	getsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, &optval, &optlen);
-	fprintf(stderr, "TCP_KEEPIDLE: %d\n", optval);
+	// fprintf(stderr, "TCP_KEEPIDLE: %d\n", optval);
 
 	getsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, &optval, &optlen);
-	fprintf(stderr, "TCP_KEEPINTVL: %d\n", optval);
+	// fprintf(stderr, "TCP_KEEPINTVL: %d\n", optval);
 
 	getsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, &optval, &optlen);
-	fprintf(stderr, "TCP_KEEPCNT: %d\n", optval);
+	// fprintf(stderr, "TCP_KEEPCNT: %d\n", optval);
 
 	unsigned int timeout = 30 * 1000;
 	setsockopt(sockfd, IPPROTO_TCP, TCP_USER_TIMEOUT, &timeout,
