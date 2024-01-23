@@ -1,4 +1,4 @@
-// libcurl 8.0.1
+// libcurl 8.5.0
 #include <node/node_api.h>
 #include <curl/curl.h>
 #include <map>
@@ -60,7 +60,9 @@ std::map<std::string, CURLINFO> mapCURLinfo {
 	{ "PROXY_ERROR", CURLINFO_PROXY_ERROR },
 	{ "REFERER", CURLINFO_REFERER },
 	{ "CAINFO", CURLINFO_CAINFO },
-	{ "CAPATH", CURLINFO_CAPATH }
+	{ "CAPATH", CURLINFO_CAPATH },
+	{ "XFER_ID", CURLINFO_XFER_ID },
+	{ "CONN_ID", CURLINFO_CONN_ID }
 };
 
 std::map<CURLcode, std::string> mapCURLcode {
