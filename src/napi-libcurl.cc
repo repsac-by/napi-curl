@@ -339,8 +339,8 @@ Napi::Value Curl::getInfo(const Napi::CallbackInfo& info) {
 			struct curl_slist *each = slist;
 			uint32_t i = 0;
 			while ( each ) {
-				array[i++] = Napi::String::New(env, each->data);
-  				each = each->next;
+				array.Set(i++, Napi::String::New(env, each->data));
+				each = each->next;
 			}
 			curl_slist_free_all(slist);
 			return array;
