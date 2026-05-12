@@ -1,9 +1,11 @@
 build/
 node_modules/
+util/curl_easy_options
 .vscode/
 setopts/
 test/
 compile_commands.json
 example.js
 test.js
+test.mjs
 test.*.js
