@@ -4,9 +4,9 @@
 #include <napi.h>
 #include <curl/curl.h>
 #include <uv.h>
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 
 #if defined(DEBUG)
 #  define DBG_LOG(fmt, ...) \
@@ -25,6 +25,10 @@ struct poll_ctx_t {
 static inline std::string rtrim(const std::string &str) {
 	const auto &chars = std::string("\n\r\t\v\f ");
 	return std::string(str.data(), str.find_last_not_of(chars) + 1);
+}
+
+static inline std::string curl_code_to_string(CURLcode code) {
+    return std::string(curl_easy_strerror(code));
 }
 
 class Curl: public Napi::ObjectWrap<Curl> {
