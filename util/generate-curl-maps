@@ -55,9 +55,10 @@ function curlh () {
 function createMaps ([ version, { infos, codes } ]) {
 	process.stdout.write(`\
 // libcurl ${version}
+#include <map>
+#include <string>
 #include <node/node_api.h>
 #include <curl/curl.h>
-#include <map>
 
 std::map<std::string, CURLINFO> mapCURLinfo {
 	${infos.join(',\n\t')}
