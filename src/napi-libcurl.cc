@@ -568,13 +568,8 @@ poll_ctx_t* Curl::create_poll_context(const curl_socket_t& sockfd, CURL* easy) {
 	socklen_t optlen = sizeof(optval);
 
 	getsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE, &optval, &optlen);
-	// fprintf(stderr, "TCP_KEEPIDLE: %d\n", optval);
-
 	getsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, &optval, &optlen);
-	// fprintf(stderr, "TCP_KEEPINTVL: %d\n", optval);
-
 	getsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT, &optval, &optlen);
-	// fprintf(stderr, "TCP_KEEPCNT: %d\n", optval);
 
 	unsigned int timeout = 30 * 1000;
 	setsockopt(sockfd, IPPROTO_TCP, TCP_USER_TIMEOUT, &timeout,
@@ -588,7 +583,9 @@ poll_ctx_t* Curl::create_poll_context(const curl_socket_t& sockfd, CURL* easy) {
 	ctx->sock = sockfd;
 	ctx->userp = self;
 
-	self->poll_ctx = ctx;
+	if (self) {
+		self->poll_ctx = ctx;
+	}
 
 	return ctx;
 }
@@ -599,9 +596,10 @@ void Curl::poll_close_cb(uv_handle_t* handle) {
 	const auto ctx = static_cast<poll_ctx_t*>(handle->data);
 	const auto self = static_cast<Curl*>(ctx->userp);
 
-	self->poll_ctx = nullptr;
-
-	self->on_close();
+	if (self) {
+		self->poll_ctx = nullptr;
+		self->on_close();
+	}
 
 	delete ctx;
 }
