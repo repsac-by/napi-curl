@@ -13,7 +13,7 @@
 				"<!@(node -p \"require('node-addon-api').gyp\")"
 			],
 			"libraries": [
-				'<!@(pkg-config libcurl --libs)'
+				"<!@(pkg-config libcurl --libs)"
 			],
 			"actions": [
 				{
