@@ -10,7 +10,7 @@
     "node": ">=17.5.0"
   },
   "dependencies": {
-    "node-addon-api": "^8.1.0"
+    "node-addon-api": "^8.7.0"
   },
   "devDependencies": {
     "@types/node": "^25.6.2"
