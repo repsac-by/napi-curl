@@ -1,0 +1,2 @@
+-I../node_modules/node-addon-api
+-I/usr/include/node
